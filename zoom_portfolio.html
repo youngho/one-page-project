@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: grab;
+        }
+
+        body:active {
+            cursor: grabbing;
+        }
+
+        .viewport {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .canvas {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+        }
+
+        .project-card {
+            position: absolute;
+            width: 280px;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            cursor: move;
+        }
+
+        .project-card:hover {
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+        }
+
+        .project-card.editing {
+            border: 3px solid #667eea;
+        }
+
+        .project-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .project-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .project-card .tag {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #667eea;
+            margin-right: 5px;
+            margin-top: 10px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .project-card:hover .card-actions {
+            opacity: 1;
+        }
+
+        .card-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .edit-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .card-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .zoom-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #667eea;
+            z-index: 1000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        .title {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 1000;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .title h1 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .title p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .user-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .user-panel input {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .user-panel button {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .user-panel button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .add-project-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #51cf66;
+            border: none;
+            border-radius: 50%;
+            font-size: 32px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .add-project-btn:hover {
+            background: #40c057;
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .save-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .cancel-btn {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .modal-actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .status-message {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            z-index: 3000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+
+        .status-message.success {
+            background: #51cf66;
+            color: white;
+        }
+
+        .status-message.error {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="title">
+        <h1>📦 My Projects</h1>
+        <p>스크롤로 확대/축소, 드래그로 이동</p>
+    </div>
+
+    <div class="zoom-indicator">
+        Zoom: <span id="zoomLevel">100</span>%
+    </div>
+
+    <div class="user-panel">
+        <input type="text" id="usernameInput" placeholder="사용자명 입력">
+        <button onclick="loadUserProjects()">로드</button>
+        <button onclick="saveAllProjects()">저장</button>
+        <span id="currentUser" style="margin-left: 10px; color: #667eea; font-weight: bold;"></span>
+    </div>
+
+    <button class="add-project-btn" onclick="openAddModal()">+</button>
+
+    <div class="controls">
+        <button class="control-btn" onclick="resetView()">⌂</button>
+        <button class="control-btn" onclick="zoomIn()">+</button>
+        <button class="control-btn" onclick="zoomOut()">−</button>
+    </div>
+
+    <div class="viewport">
+        <div class="canvas" id="canvas"></div>
+    </div>
+
+    <!-- 모달 -->
+    <div class="modal" id="projectModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">새 프로젝트 추가</h2>
+            <form id="projectForm">
+                <div class="form-group">
+                    <label>제목 (이모지 포함)</label>
+                    <input type="text" id="projectTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>설명</label>
+                    <textarea id="projectDesc" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>태그 (쉼표로 구분)</label>
+                    <input type="text" id="projectTags" placeholder="React, Node.js, MongoDB">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="save-btn">저장</button>
+                    <button type="button" class="cancel-btn" onclick="closeModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const zoomLevelEl = document.getElementById('zoomLevel');
+        const currentUserEl = document.getElementById('currentUser');
+        const modal = document.getElementById('projectModal');
+        const projectForm = document.getElementById('projectForm');
+        
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isDragging = false;
+        let startX, startY;
+        let currentUser = '';
+        let projects = {};
+        let editingProjectId = null;
+
+        // API 설정
+        const API_BASE_URL = 'http://localhost:8080/api/projects';
+
+        // 변환 적용
+        function updateTransform() {
+            canvas.style.transform = `translate(${translateX}px, ${translateY}px) translate(-50%, -50%) scale(${scale})`;
+            zoomLevelEl.textContent = Math.round(scale * 100);
+        }
+
+        // 상태 메시지 표시
+        function showMessage(message, type = 'success') {
+            const msg = document.createElement('div');
+            msg.className = `status-message ${type}`;
+            msg.textContent = message;
+            document.body.appendChild(msg);
+            
+            setTimeout(() => {
+                msg.remove();
+            }, 3000);
+        }
+
+        // 서버에 저장 (실제 백엔드 API 호출)
+        async function saveToServer(username, projectsData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${username}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(projectsData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('저장 실패');
+                }
+                
+                const result = await response.json();
+                showMessage('프로젝트가 저장되었습니다!');
+            } catch (error) {
+                console.error('저장 오류:', error);
+                showMessage('저장 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 서버에서 로드 (실제 백엔드 API 호출)
+        async function loadFromServer(username) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${username}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        return null;
+                    }
+                    throw new Error('로드 실패');
+                }
+                
+                const data = await response.json();
+                return data.projects || null;
+            } catch (error) {
+                console.error('로드 오류:', error);
+                showMessage('로드 중 오류가 발생했습니다.', 'error');
+                return null;
+            }
+        }
+
+        // 프로젝트 카드 렌더링
+        function renderProjects() {
+            canvas.innerHTML = '';
+            
+            Object.entries(projects).forEach(([id, project]) => {
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.style.left = project.x + 'px';
+                card.style.top = project.y + 'px';
+                card.dataset.id = id;
+                
+                const tags = project.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                
+                card.innerHTML = `
+                    <h2>${project.title}</h2>
+                    <p>${project.desc}</p>
+                    <div>${tags}</div>
+                    <div class="card-actions">
+                        <button class="card-btn edit-btn" onclick="editProject('${id}')">✏️ 편집</button>
+                        <button class="card-btn delete-btn" onclick="deleteProject('${id}')">🗑️ 삭제</button>
+                    </div>
+                `;
+                
+                // 카드 드래그
+                card.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.card-btn')) return;
+                    
+                    e.stopPropagation();
+                    let cardStartX = e.clientX;
+                    let cardStartY = e.clientY;
+                    let cardOriginalX = parseInt(card.style.left);
+                    let cardOriginalY = parseInt(card.style.top);
+                    
+                    const moveCard = (e) => {
+                        const dx = (e.clientX - cardStartX) / scale;
+                        const dy = (e.clientY - cardStartY) / scale;
+                        card.style.left = (cardOriginalX + dx) + 'px';
+                        card.style.top = (cardOriginalY + dy) + 'px';
+                    };
+                    
+                    const stopMoveCard = () => {
+                        document.removeEventListener('mousemove', moveCard);
+                        document.removeEventListener('mouseup', stopMoveCard);
+                        
+                        projects[id].x = parseInt(card.style.left);
+                        projects[id].y = parseInt(card.style.top);
+                    };
+                    
+                    document.addEventListener('mousemove', moveCard);
+                    document.addEventListener('mouseup', stopMoveCard);
+                });
+                
+                canvas.appendChild(card);
+            });
+        }
+
+        // 사용자 프로젝트 로드
+        function loadUserProjects() {
+            const username = document.getElementById('usernameInput').value.trim();
+            
+            if (!username) {
+                showMessage('사용자명을 입력해주세요!', 'error');
+                return;
+            }
+            
+            currentUser = username;
+            currentUserEl.textContent = `👤 ${username}`;
+            
+            const loadedProjects = loadFromServer(username);
+            
+            if (loadedProjects) {
+                projects = loadedProjects;
+                showMessage('프로젝트를 불러왔습니다!');
+            } else {
+                projects = {
+                    'p1': {
+                        title: '🎨 첫 프로젝트',
+                        desc: '여기에 프로젝트를 추가해보세요!',
+                        tags: ['시작하기'],
+                        x: 400,
+                        y: 300
+                    }
+                };
+                showMessage('새로운 사용자입니다. 환영합니다!');
+            }
+            
+            renderProjects();
+        }
+
+        // 모든 프로젝트 저장
+        function saveAllProjects() {
+            if (!currentUser) {
+                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                return;
+            }
+            
+            saveToServer(currentUser, projects);
+        }
+
+        // 모달 열기
+        function openAddModal() {
+            if (!currentUser) {
+                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                return;
+            }
+            
+            editingProjectId = null;
+            document.getElementById('modalTitle').textContent = '새 프로젝트 추가';
+            document.getElementById('projectTitle').value = '';
+            document.getElementById('projectDesc').value = '';
+            document.getElementById('projectTags').value = '';
+            modal.classList.add('active');
+        }
+
+        // 프로젝트 편집
+        function editProject(id) {
+            editingProjectId = id;
+            const project = projects[id];
+            
+            document.getElementById('modalTitle').textContent = '프로젝트 편집';
+            document.getElementById('projectTitle').value = project.title;
+            document.getElementById('projectDesc').value = project.desc;
+            document.getElementById('projectTags').value = project.tags.join(', ');
+            modal.classList.add('active');
+        }
+
+        // 프로젝트 삭제
+        function deleteProject(id) {
+            if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
+                delete projects[id];
+                renderProjects();
+                showMessage('프로젝트가 삭제되었습니다!');
+            }
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            modal.classList.remove('active');
+            editingProjectId = null;
+        }
+
+        // 폼 제출
+        projectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('projectTitle').value;
+            const desc = document.getElementById('projectDesc').value;
+            const tagsStr = document.getElementById('projectTags').value;
+            const tags = tagsStr.split(',').map(t => t.trim()).filter(t => t);
+            
+            if (editingProjectId) {
+                projects[editingProjectId].title = title;
+                projects[editingProjectId].desc = desc;
+                projects[editingProjectId].tags = tags;
+            } else {
+                const newId = 'p' + Date.now();
+                projects[newId] = {
+                    title,
+                    desc,
+                    tags,
+                    x: 400 + Math.random() * 200,
+                    y: 300 + Math.random() * 200
+                };
+            }
+            
+            renderProjects();
+            closeModal();
+            showMessage(editingProjectId ? '프로젝트가 수정되었습니다!' : '프로젝트가 추가되었습니다!');
+        });
+
+        // 줌 기능
+        document.querySelector('.viewport').addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const delta = e.deltaY;
+            const zoomIntensity = 0.1;
+            
+            if (delta < 0) {
+                scale *= (1 + zoomIntensity);
+            } else {
+                scale *= (1 - zoomIntensity);
+            }
+            
+            scale = Math.min(Math.max(0.3, scale), 3);
+            updateTransform();
+        }, { passive: false });
+
+        // 캔버스 드래그 기능
+        document.querySelector('.viewport').addEventListener('mousedown', (e) => {
+            if (e.target.closest('.project-card') || e.target.closest('.modal')) return;
+            
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            document.body.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateTransform();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.body.style.cursor = 'grab';
+        });
+
+        // 컨트롤 버튼
+        function zoomIn() {
+            scale = Math.min(scale * 1.2, 3);
+            updateTransform();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale * 0.8, 0.3);
+            updateTransform();
+        }
+
+        function resetView() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+        }
+
+        // 모달 외부 클릭시 닫기
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // 초기화
+        updateTransform();
+    </script>
+</body>
+</html>
