@@ -368,6 +368,9 @@
         <input type="text" id="usernameInput" placeholder="사용자명 입력">
         <button onclick="loadUserProjects()">로드</button>
         <button onclick="saveAllProjects()">저장</button>
+        <button onclick="exportToJSON()">📥 내보내기</button>
+        <button onclick="document.getElementById('importFile').click()">📤 가져오기</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importFromJSON(event)">
         <span id="currentUser" style="margin-left: 10px; color: #667eea; font-weight: bold;"></span>
     </div>
 
@@ -426,6 +429,7 @@
 
         // API 설정
         const API_BASE_URL = 'http://localhost:8080/api/projects';
+        const USE_SERVER = false; // 서버 사용 여부 (true: 백엔드 사용, false: 브라우저 저장소 사용)
 
         // 변환 적용
         function updateTransform() {
@@ -445,8 +449,40 @@
             }, 3000);
         }
 
+        // 브라우저 저장소에 저장
+        function saveToLocalStorage(username, projectsData) {
+            try {
+                const key = `opp_projects_${username}`;
+                localStorage.setItem(key, JSON.stringify(projectsData));
+                showMessage('프로젝트가 저장되었습니다!');
+                return true;
+            } catch (error) {
+                console.error('저장 오류:', error);
+                showMessage('저장 중 오류가 발생했습니다.', 'error');
+                return false;
+            }
+        }
+
+        // 브라우저 저장소에서 로드
+        function loadFromLocalStorage(username) {
+            try {
+                const key = `opp_projects_${username}`;
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (error) {
+                console.error('로드 오류:', error);
+                return null;
+            }
+        }
+
         // 서버에 저장 (실제 백엔드 API 호출)
         async function saveToServer(username, projectsData) {
+            // 서버 사용 안 함 → 브라우저 저장소 사용
+            if (!USE_SERVER) {
+                return saveToLocalStorage(username, projectsData);
+            }
+            
+            // 서버 사용
             try {
                 const response = await fetch(`${API_BASE_URL}/${username}`, {
                     method: 'POST',
@@ -463,19 +499,25 @@
                 const result = await response.json();
                 showMessage('프로젝트가 저장되었습니다!');
             } catch (error) {
-                console.error('저장 오류:', error);
-                showMessage('저장 중 오류가 발생했습니다.', 'error');
+                console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
+                saveToLocalStorage(username, projectsData);
             }
         }
 
         // 서버에서 로드 (실제 백엔드 API 호출)
         async function loadFromServer(username) {
+            // 서버 사용 안 함 → 브라우저 저장소 사용
+            if (!USE_SERVER) {
+                return loadFromLocalStorage(username);
+            }
+            
+            // 서버 사용
             try {
                 const response = await fetch(`${API_BASE_URL}/${username}`);
                 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        return null;
+                        return loadFromLocalStorage(username);
                     }
                     throw new Error('로드 실패');
                 }
@@ -483,9 +525,8 @@
                 const data = await response.json();
                 return data.projects || null;
             } catch (error) {
-                console.error('로드 오류:', error);
-                showMessage('로드 중 오류가 발생했습니다.', 'error');
-                return null;
+                console.error('서버 연결 실패. 브라우저 저장소에서 로드합니다.', error);
+                return loadFromLocalStorage(username);
             }
         }
 
@@ -543,10 +584,13 @@
                 
                 canvas.appendChild(card);
             });
+            
+            // 렌더링 후 화면에 맞추기
+            setTimeout(() => fitProjectsToView(), 100);
         }
 
         // 사용자 프로젝트 로드
-        function loadUserProjects() {
+        async function loadUserProjects() {
             const username = document.getElementById('usernameInput').value.trim();
             
             if (!username) {
@@ -557,9 +601,9 @@
             currentUser = username;
             currentUserEl.textContent = `👤 ${username}`;
             
-            const loadedProjects = loadFromServer(username);
+            const loadedProjects = await loadFromServer(username);
             
-            if (loadedProjects) {
+            if (loadedProjects && Object.keys(loadedProjects).length > 0) {
                 projects = loadedProjects;
                 showMessage('프로젝트를 불러왔습니다!');
             } else {
@@ -579,13 +623,13 @@
         }
 
         // 모든 프로젝트 저장
-        function saveAllProjects() {
+        async function saveAllProjects() {
             if (!currentUser) {
                 showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
                 return;
             }
             
-            saveToServer(currentUser, projects);
+            await saveToServer(currentUser, projects);
         }
 
         // 모달 열기
@@ -711,10 +755,14 @@
         }
 
         function resetView() {
-            scale = 1;
-            translateX = 0;
-            translateY = 0;
-            updateTransform();
+            if (Object.keys(projects).length > 0) {
+                fitProjectsToView();
+            } else {
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                updateTransform();
+            }
         }
 
         // 모달 외부 클릭시 닫기
@@ -724,8 +772,126 @@
             }
         });
 
+        // 프로젝트들을 화면에 꽉 차게 보여주기
+        function fitProjectsToView() {
+            if (Object.keys(projects).length === 0) return;
+            
+            // 모든 프로젝트의 경계 계산
+            let minX = Infinity, minY = Infinity;
+            let maxX = -Infinity, maxY = -Infinity;
+            
+            Object.values(projects).forEach(project => {
+                minX = Math.min(minX, project.x);
+                minY = Math.min(minY, project.y);
+                maxX = Math.max(maxX, project.x + 280); // 카드 너비 280
+                maxY = Math.max(maxY, project.y + 200); // 카드 높이 약 200
+            });
+            
+            // 프로젝트들의 중심점
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            
+            // 프로젝트들의 영역 크기
+            const projectsWidth = maxX - minX;
+            const projectsHeight = maxY - minY;
+            
+            // 뷰포트 크기 (UI 요소 제외)
+            const viewportWidth = window.innerWidth - 100; // 여백 고려
+            const viewportHeight = window.innerHeight - 200; // 상하 UI 제외
+            
+            // 적절한 스케일 계산 (80% 정도만 채우기)
+            const scaleX = (viewportWidth * 0.8) / projectsWidth;
+            const scaleY = (viewportHeight * 0.8) / projectsHeight;
+            scale = Math.min(scaleX, scaleY, 2); // 최대 2배까지만
+            scale = Math.max(scale, 0.3); // 최소 0.3배
+            
+            // 중심 맞추기
+            translateX = (window.innerWidth / 2) - (centerX * scale);
+            translateY = (window.innerHeight / 2) - (centerY * scale);
+            
+            updateTransform();
+        }
+        
+        // 윈도우 리사이즈 시 자동 조정
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (Object.keys(projects).length > 0) {
+                    fitProjectsToView();
+                }
+            }, 300);
+        });
+        
         // 초기화
         updateTransform();
+        
+        // JSON 내보내기
+        function exportToJSON() {
+            if (!currentUser) {
+                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                return;
+            }
+            
+            const exportData = {
+                username: currentUser,
+                exportDate: new Date().toISOString(),
+                version: '1.0',
+                projects: projects
+            };
+            
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OPP_${currentUser}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
+        }
+        
+        // JSON 가져오기
+        function importFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    
+                    // 데이터 유효성 검사
+                    if (!importData.projects) {
+                        throw new Error('올바른 OPP JSON 파일이 아닙니다.');
+                    }
+                    
+                    // 사용자명 설정
+                    if (importData.username) {
+                        currentUser = importData.username;
+                        document.getElementById('usernameInput').value = currentUser;
+                        currentUserEl.textContent = `👤 ${currentUser}`;
+                    }
+                    
+                    // 프로젝트 로드
+                    projects = importData.projects;
+                    renderProjects();
+                    
+                    showMessage(`프로젝트를 가져왔습니다! (${Object.keys(projects).length}개)`);
+                } catch (error) {
+                    console.error('가져오기 오류:', error);
+                    showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            // 파일 입력 초기화
+            event.target.value = '';
+        }
     </script>
 </body>
 </html>

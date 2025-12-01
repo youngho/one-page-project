@@ -1,0 +1,16 @@
+package to.yho.opp.project;
+
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class ProjectDto {
+    private String projectId;
+    private String title;
+    private String desc;
+    private List<String> tags;
+    private Double x;
+    private Double y;
+}
+
