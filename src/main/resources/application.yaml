@@ -16,3 +16,7 @@ spring:
     enabled: true
     baseline-version: 0
     out-of-order: true
+
+springdoc:
+  swagger-ui:
+    path: /docs
