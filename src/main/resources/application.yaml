@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: One Page Project
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:mariadb://146.56.105.224/OPP
+    username: onepagedb
+    password: 20251126As!
+  jpa:
+    hibernate:
+      dialect: org.hibernate.dialect.MariaDBDialect
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+  flyway:
+    enabled: true
+    baseline-version: 0
+    out-of-order: true
