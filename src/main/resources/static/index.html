@@ -354,7 +354,7 @@
 
                 // API 설정
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
-                const USE_SERVER = false;
+                const USE_SERVER = true;
 
                 // 계산된 속성
                 const canvasStyle = computed(() => ({
@@ -446,11 +446,13 @@
 
                 // 프로젝트 관리
                 const loadUserProjects = async () => {
-                    const username = usernameInput.value.trim();
+                    let username = usernameInput.value.trim();
                     
+                    // 사용자명이 없으면 기본 사용자명 사용
                     if (!username) {
-                        showMessage('사용자명을 입력해주세요!', 'error');
-                        return;
+                        username = 'guest';
+                        usernameInput.value = username;
+                        showMessage('기본 사용자명(guest)으로 시작합니다.', 'success');
                     }
                     
                     currentUser.value = username;
@@ -479,18 +481,23 @@
                 };
 
                 const saveAllProjects = async () => {
+                    // 사용자명이 없으면 기본 사용자명 사용
+                    const username = currentUser.value || 'guest';
                     if (!currentUser.value) {
-                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                        return;
+                        currentUser.value = username;
+                        usernameInput.value = username;
                     }
                     
-                    await saveToServer(currentUser.value, projects);
+                    await saveToServer(username, projects);
                 };
 
                 const openAddModal = () => {
+                    // 사용자명이 없으면 기본 사용자명 사용
                     if (!currentUser.value) {
-                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                        return;
+                        const defaultUser = 'guest';
+                        currentUser.value = defaultUser;
+                        usernameInput.value = defaultUser;
+                        showMessage('기본 사용자명(guest)으로 프로젝트를 추가합니다.', 'success');
                     }
                     
                     editingProjectId.value = null;
@@ -632,13 +639,15 @@
 
                 // JSON 내보내기/가져오기
                 const exportToJSON = () => {
+                    // 사용자명이 없으면 기본 사용자명 사용
+                    const username = currentUser.value || 'guest';
                     if (!currentUser.value) {
-                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                        return;
+                        currentUser.value = username;
+                        usernameInput.value = username;
                     }
                     
                     const exportData = {
-                        username: currentUser.value,
+                        username: username,
                         exportDate: new Date().toISOString(),
                         version: '1.0',
                         projects: projects
@@ -650,7 +659,7 @@
                     
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `OPP_${currentUser.value}_${new Date().toISOString().split('T')[0]}.json`;
+                    a.download = `OPP_${username}_${new Date().toISOString().split('T')[0]}.json`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
