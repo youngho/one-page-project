@@ -76,7 +76,7 @@
 
         <!-- Zoom Indicator -->
         <div class="fixed top-5 right-5 bg-white/90 px-5 py-4 rounded-lg font-bold text-indigo-500 z-[1000] shadow-lg">
-            Zoom: {{ Math.round(scale * 100) }}%
+            Zoom: {{ Math.round(viewportScale * 100) }}%
         </div>
 
         <!-- User Panel -->
@@ -117,28 +117,28 @@
 
         <!-- Viewport -->
         <div class="w-screen h-screen overflow-hidden relative" @wheel.prevent="handleWheel"
-            @mousedown="startCanvasDrag" :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
+            @mousedown="startCanvasDrag" :style="{ cursor: isViewportDragging ? 'grabbing' : 'grab' }">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
                 ref="canvas" :style="canvasStyle">
                 <project-card v-for="(project, id) in currentProjects" :key="id" :project="project" :project-id="id"
-                    :scale="scale" @edit="editProject" @delete="deleteProject"
+                    :scale="viewportScale" @edit="editProject" @delete="deleteProject"
                     @update-position="updateProjectPosition" />
             </div>
         </div>
 
         <!-- Modal -->
-        <project-modal v-if="showModal" :project="editingProject" :is-editing="!!editingProjectId" @close="closeModal"
-            @save="saveProject" />
+        <project-modal v-if="isProjectModalOpen" :project="editingProject" :is-editing="!!currentEditingProjectId"
+            @close="closeModal" @save="saveProject" />
 
-        <project-group-modal v-if="showProjectGroupModal" :group="editingProjectGroup"
-            :is-editing="!!editingProjectGroupId" @close="closeProjectGroupModal" @save="saveProjectGroup" />
+        <project-group-modal v-if="isGroupModalOpen" :group="editingProjectGroup" :is-editing="!!currentEditingGroupId"
+            @close="closeProjectGroupModal" @save="saveProjectGroup" />
 
         <!-- Status Message -->
         <status-message v-if="statusMessage" :message="statusMessage.text" :type="statusMessage.type"
             @close="statusMessage = null" />
 
         <!-- Login Modal -->
-        <login-modal v-if="showLoginModal" @login="handleLogin" />
+        <login-modal v-if="isLoginModalOpen" @login="handleLogin" />
     </div>
 
     <script>
@@ -459,38 +459,39 @@
                 const canvas = ref(null);
                 const fileInput = ref(null);
 
-                // 상태
-                const scale = ref(1);
-                const translateX = ref(0);
-                const translateY = ref(0);
-                const isDragging = ref(false);
-                const dragStart = reactive({ x: 0, y: 0 });
+                // 1. State
+                const viewportScale = ref(1);
+                const viewportX = ref(0);
+                const viewportY = ref(0);
+                const isViewportDragging = ref(false);
+                const viewportDragStart = reactive({ x: 0, y: 0 });
+
                 const projectGroups = reactive({});
                 const selectedProjectGroup = ref(null);
                 const currentUser = ref('');
                 const usernameInput = ref('');
-                const showModal = ref(false);
-                const editingProjectId = ref(null);
-                const showProjectGroupModal = ref(false);
-                const editingProjectGroupId = ref(null);
+
+                const isProjectModalOpen = ref(false);
+                const currentEditingProjectId = ref(null);
+
+                const isGroupModalOpen = ref(false);
+                const currentEditingGroupId = ref(null);
+
                 const statusMessage = ref(null);
-                const showLoginModal = ref(true);
+                const isLoginModalOpen = ref(true);
 
-                // showLoginModal 값 변경 추적
-                console.log('Initial showLoginModal:', showLoginModal.value);
-
-                // API 설정
+                // API Config
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
-                // 계산된 속성
+                // 2. Computed Properties
                 const canvasStyle = computed(() => ({
-                    transform: `translate(${translateX.value}px, ${translateY.value}px) translate(-50%, -50%) scale(${scale.value})`
+                    transform: `translate(${viewportX.value}px, ${viewportY.value}px) translate(-50%, -50%) scale(${viewportScale.value})`
                 }));
 
                 const editingProject = computed(() => {
-                    if (!editingProjectId.value || !selectedProjectGroup.value) return null;
+                    if (!currentEditingProjectId.value || !selectedProjectGroup.value) return null;
                     const group = projectGroups[selectedProjectGroup.value];
-                    return group?.cards?.[editingProjectId.value] || null;
+                    return group?.cards?.[currentEditingProjectId.value] || null;
                 });
 
                 const currentProjects = computed(() => {
@@ -501,38 +502,168 @@
                 });
 
                 const editingProjectGroup = computed(() => {
-                    return editingProjectGroupId.value ? projectGroups[editingProjectGroupId.value] : null;
+                    return currentEditingGroupId.value ? projectGroups[currentEditingGroupId.value] : null;
                 });
 
-                // 유틸리티 함수
+                // 3. Viewport Management
+                const handleWheel = (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY;
+                    const zoomIntensity = 0.1;
+
+                    if (delta < 0) {
+                        viewportScale.value *= (1 + zoomIntensity);
+                    } else {
+                        viewportScale.value *= (1 - zoomIntensity);
+                    }
+                    viewportScale.value = Math.min(Math.max(0.3, viewportScale.value), 3);
+                };
+
+                const zoomIn = () => {
+                    viewportScale.value = Math.min(viewportScale.value * 1.2, 3);
+                };
+
+                const zoomOut = () => {
+                    viewportScale.value = Math.max(viewportScale.value * 0.8, 0.3);
+                };
+
+                const startCanvasDrag = (e) => {
+                    if (e.target.closest('.project-card') || e.target.closest('.modal')) return;
+                    isViewportDragging.value = true;
+                    viewportDragStart.x = e.clientX - viewportX.value;
+                    viewportDragStart.y = e.clientY - viewportY.value;
+                    document.body.style.cursor = 'grabbing';
+                };
+
+                const handleMouseMove = (e) => {
+                    if (!isViewportDragging.value) return;
+                    viewportX.value = e.clientX - viewportDragStart.x;
+                    viewportY.value = e.clientY - viewportDragStart.y;
+                };
+
+                const handleMouseUp = () => {
+                    isViewportDragging.value = false;
+                    document.body.style.cursor = 'grab';
+                };
+
+                const resetView = () => {
+                    if (Object.keys(currentProjects.value).length > 0) {
+                        setTimeout(() => {
+                            fitProjectsToView(1);
+                        }, 50);
+                    } else {
+                        viewportScale.value = 1;
+                        viewportX.value = 0;
+                        viewportY.value = 0;
+                    }
+                };
+
+                const constrainCardPosition = (x, y) => {
+                    const cardWidth = 280;
+                    const cardHeight = 200;
+                    const padding = 100;
+                    const centerX = window.innerWidth;
+                    const centerY = window.innerHeight;
+                    const minX = centerX - window.innerWidth / 2 + padding;
+                    const maxX = centerX + window.innerWidth / 2 - cardWidth - padding;
+                    const minY = centerY - window.innerHeight / 2 + padding;
+                    const maxY = centerY + window.innerHeight / 2 - cardHeight - padding;
+                    return {
+                        x: Math.max(minX, Math.min(maxX, x)),
+                        y: Math.max(minY, Math.min(maxY, y))
+                    };
+                };
+
+                const ensureCardsInView = (skipFitView = false) => {
+                    if (!selectedProjectGroup.value) return false;
+                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!group || !group.cards) return false;
+
+                    let needsUpdate = false;
+                    Object.keys(group.cards).forEach(id => {
+                        const card = group.cards[id];
+                        const constrained = constrainCardPosition(card.x, card.y);
+                        if (card.x !== constrained.x || card.y !== constrained.y) {
+                            card.x = constrained.x;
+                            card.y = constrained.y;
+                            needsUpdate = true;
+                        }
+                    });
+
+                    if (needsUpdate && !skipFitView) {
+                        nextTick(() => {
+                            fitProjectsToView();
+                        });
+                    }
+                    return needsUpdate;
+                };
+
+                const fitProjectsToView = (targetScale = null) => {
+                    const projectKeys = Object.keys(currentProjects.value);
+                    if (projectKeys.length === 0) {
+                        viewportScale.value = 1;
+                        viewportX.value = 0;
+                        viewportY.value = 0;
+                        return;
+                    }
+                    ensureCardsInView(true);
+
+                    let minX = Infinity, minY = Infinity;
+                    let maxX = -Infinity, maxY = -Infinity;
+
+                    Object.values(currentProjects.value).forEach(project => {
+                        if (project && typeof project.x === 'number' && typeof project.y === 'number') {
+                            minX = Math.min(minX, project.x);
+                            minY = Math.min(minY, project.y);
+                            maxX = Math.max(maxX, project.x + 280);
+                            maxY = Math.max(maxY, project.y + 200);
+                        }
+                    });
+
+                    if (minX === Infinity || minY === Infinity) {
+                        viewportScale.value = 1;
+                        viewportX.value = 0;
+                        viewportY.value = 0;
+                        return;
+                    }
+
+                    if (targetScale !== null) {
+                        viewportScale.value = targetScale;
+                    } else {
+                        const projectsWidth = maxX - minX;
+                        const projectsHeight = maxY - minY;
+                        const viewportWidth = window.innerWidth - 300;
+                        const viewportHeight = window.innerHeight - 250;
+                        let calculatedScale = 1;
+                        if (projectsWidth > 0 && projectsHeight > 0) {
+                            const scaleX = (viewportWidth * 0.85) / projectsWidth;
+                            const scaleY = (viewportHeight * 0.85) / projectsHeight;
+                            calculatedScale = Math.min(scaleX, scaleY, 2);
+                            calculatedScale = Math.max(calculatedScale, 0.3);
+                        }
+                        viewportScale.value = calculatedScale;
+                    }
+
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    const viewportCenterX = window.innerWidth;
+                    const viewportCenterY = window.innerHeight;
+
+                    viewportX.value = viewportCenterX - (centerX * viewportScale.value);
+                    viewportY.value = viewportCenterY - (centerY * viewportScale.value);
+                };
+
+                // 4. Data Persistence
                 const showMessage = (message, type = 'success') => {
-                    console.log('showMessage called with:', message, type);
                     statusMessage.value = { text: message, type };
                 };
 
-                // 사용자명이 없으면 리턴 (또는 로그인 모달 표시)
-                const checkUsername = (username) => {
-                    console.log('checkUsername', username);
-                    if (!username) {
-                        console.log('username is null');
-                        console.log('Setting showLoginModal to true');
-                        showLoginModal.value = true;
-                        console.log('showLoginModal.value:', showLoginModal.value);
-                        return;
-                    }
-                }
-
-                // 데이터 마이그레이션: 기존 projects 형식을 projectGroups 형식으로 변환
                 const migrateToProjectGroups = (oldProjects) => {
-                    if (!oldProjects || Object.keys(oldProjects).length === 0) {
-                        return {};
-                    }
-                    // 기존 데이터가 이미 projectGroups 형식인지 확인
+                    if (!oldProjects || Object.keys(oldProjects).length === 0) return {};
                     const firstKey = Object.keys(oldProjects)[0];
                     if (oldProjects[firstKey] && oldProjects[firstKey].name && oldProjects[firstKey].cards) {
-                        return oldProjects; // 이미 projectGroups 형식
+                        return oldProjects;
                     }
-                    // 기존 형식이면 변환
                     return {
                         'default': {
                             name: '기본 프로젝트',
@@ -541,7 +672,6 @@
                     };
                 };
 
-                // 로컬스토리지
                 const saveToLocalStorage = (username, projectGroupsData) => {
                     try {
                         const key = `opp_projects_${username}`;
@@ -568,26 +698,16 @@
                     }
                 };
 
-                // 서버 API
                 const saveToServer = async (username, projectGroupsData) => {
                     try {
-                        // 서버는 기존 형식(projects)을 기대하므로 변환 필요
-                        // 첫 번째 그룹의 cards를 projects로 변환 (임시)
                         const firstGroupId = Object.keys(projectGroupsData)[0];
                         const projectsData = firstGroupId ? projectGroupsData[firstGroupId].cards : {};
-
                         const response = await fetch(`${API_BASE_URL}/${username}`, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(projectsData)
                         });
-
-                        if (!response.ok) {
-                            throw new Error('저장 실패');
-                        }
-
+                        if (!response.ok) throw new Error('저장 실패');
                         showMessage('프로젝트가 저장되었습니다!');
                     } catch (error) {
                         console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
@@ -598,14 +718,10 @@
                 const loadFromServer = async (username) => {
                     try {
                         const response = await fetch(`${API_BASE_URL}/${username}`);
-
                         if (!response.ok) {
-                            if (response.status === 404) {
-                                return loadFromLocalStorage(username);
-                            }
+                            if (response.status === 404) return loadFromLocalStorage(username);
                             throw new Error('로드 실패');
                         }
-
                         const data = await response.json();
                         const oldProjects = data.projects || null;
                         return migrateToProjectGroups(oldProjects);
@@ -615,31 +731,93 @@
                     }
                 };
 
-                // 프로젝트 관리
+                const exportToJSON = () => {
+                    const username = currentUser.value || 'guest';
+                    if (!currentUser.value) {
+                        currentUser.value = username;
+                        usernameInput.value = username;
+                    }
+                    const exportData = {
+                        username: username,
+                        exportDate: new Date().toISOString(),
+                        version: '2.0',
+                        projectGroups: projectGroups
+                    };
+                    const jsonString = JSON.stringify(exportData, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `OPP_${username}_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
+                };
+
+                const triggerFileImport = () => {
+                    fileInput.value?.click();
+                };
+
+                const importFromJSON = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        try {
+                            const importData = JSON.parse(e.target.result);
+                            let groupsToImport = null;
+                            if (importData.projectGroups) {
+                                groupsToImport = importData.projectGroups;
+                            } else if (importData.projects) {
+                                groupsToImport = migrateToProjectGroups(importData.projects);
+                            } else {
+                                throw new Error('올바른 OPP JSON 파일이 아닙니다.');
+                            }
+                            if (importData.username) {
+                                currentUser.value = importData.username;
+                                usernameInput.value = importData.username;
+                            }
+                            Object.assign(projectGroups, groupsToImport);
+                            const firstGroupId = Object.keys(groupsToImport)[0];
+                            if (firstGroupId) selectedProjectGroup.value = firstGroupId;
+                            const totalCards = Object.values(groupsToImport).reduce((sum, group) => sum + Object.keys(group.cards || {}).length, 0);
+                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(groupsToImport).length}개 그룹, ${totalCards}개 카드)`);
+                            nextTick(() => {
+                                fitProjectsToView(1);
+                            });
+                        } catch (error) {
+                            console.error('가져오기 오류:', error);
+                            showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                    event.target.value = '';
+                };
+
+                // 5. User Management
                 const loadUserProjects = async () => {
                     let username = usernameInput.value.trim();
-
+                    if (!username) {
+                        username = 'guest';
+                        usernameInput.value = username;
+                        showMessage('기본 사용자명(guest)으로 시작합니다.', 'success');
+                    }
                     currentUser.value = username;
-
                     const loadedGroups = await loadFromServer(username);
-
                     if (loadedGroups && Object.keys(loadedGroups).length > 0) {
                         Object.assign(projectGroups, loadedGroups);
-                        // 첫 번째 그룹 선택
                         const firstGroupId = Object.keys(loadedGroups)[0];
                         selectedProjectGroup.value = firstGroupId;
-                        // 로드된 카드들의 위치를 경계 내로 조정
                         ensureCardsInView(true);
                         showMessage('프로젝트를 불러왔습니다!');
                     } else {
-                        // 기본 프로젝트 그룹 생성
                         const defaultGroupId = 'group_' + Date.now();
-                        // viewport 중심에 카드 배치
                         const centerX = window.innerWidth;
                         const centerY = window.innerHeight;
-                        const cardX = centerX - 140; // 카드 너비의 절반
-                        const cardY = centerY - 100; // 카드 높이의 절반
-
+                        const cardX = centerX - 140;
+                        const cardY = centerY - 100;
                         projectGroups[defaultGroupId] = {
                             name: '기본 프로젝트',
                             cards: {
@@ -655,34 +833,34 @@
                         selectedProjectGroup.value = defaultGroupId;
                         showMessage('새로운 사용자입니다. 환영합니다!');
                     }
-
-                    // 약간의 지연 후 뷰 조정 (DOM 업데이트 대기)
                     setTimeout(() => {
                         fitProjectsToView(1);
                     }, 100);
                 };
 
-                const saveAllProjects = async () => {
-                    // 사용자명이 없으면 기본 사용자명 사용
-                    const username = currentUser.value || 'guest';
-                    if (!currentUser.value) {
-                        currentUser.value = username;
-                        usernameInput.value = username;
-                    }
-
-                    await saveToServer(username, projectGroups);
+                const handleLogin = (username) => {
+                    currentUser.value = username;
+                    usernameInput.value = username;
+                    isLoginModalOpen.value = false;
+                    localStorage.setItem('opp_last_user', username);
+                    loadUserProjects();
                 };
 
+                const logout = () => {
+                    if (confirm('로그아웃 하시겠습니까?')) {
+                        localStorage.removeItem('opp_last_user');
+                        location.reload();
+                    }
+                };
+
+                // 6. Project Management
                 const openAddModal = () => {
-                    // 사용자명이 없으면 기본 사용자명 사용
                     if (!currentUser.value) {
                         const defaultUser = 'guest';
                         currentUser.value = defaultUser;
                         usernameInput.value = defaultUser;
                         showMessage('기본 사용자명(guest)으로 프로젝트를 추가합니다.', 'success');
                     }
-
-                    // 프로젝트 그룹이 없으면 생성
                     if (!selectedProjectGroup.value || Object.keys(projectGroups).length === 0) {
                         const defaultGroupId = 'group_' + Date.now();
                         projectGroups[defaultGroupId] = {
@@ -691,14 +869,13 @@
                         };
                         selectedProjectGroup.value = defaultGroupId;
                     }
-
-                    editingProjectId.value = null;
-                    showModal.value = true;
+                    currentEditingProjectId.value = null;
+                    isProjectModalOpen.value = true;
                 };
 
                 const editProject = (id) => {
-                    editingProjectId.value = id;
-                    showModal.value = true;
+                    currentEditingProjectId.value = id;
+                    isProjectModalOpen.value = true;
                 };
 
                 const deleteProject = (id) => {
@@ -717,39 +894,29 @@
 
                 const saveProject = (projectData) => {
                     if (!selectedProjectGroup.value) return;
-
                     const group = projectGroups[selectedProjectGroup.value];
-                    if (!group.cards) {
-                        group.cards = {};
-                    }
+                    if (!group.cards) group.cards = {};
 
-                    if (editingProjectId.value) {
-                        Object.assign(group.cards[editingProjectId.value], projectData);
+                    if (currentEditingProjectId.value) {
+                        Object.assign(group.cards[currentEditingProjectId.value], projectData);
                         showMessage('프로젝트가 수정되었습니다!');
                     } else {
                         const newId = 'p' + Date.now();
-                        // 새 카드의 위치를 viewport 중앙 근처로 설정
                         const centerX = window.innerWidth;
                         const centerY = window.innerHeight;
-                        // 기존 카드들의 위치를 고려하여 배치
                         const existingCards = Object.values(group.cards);
                         let cardX = centerX - 140;
                         let cardY = centerY - 100;
-
                         if (existingCards.length > 0) {
-                            // 기존 카드 옆에 배치
                             const lastCard = existingCards[existingCards.length - 1];
-                            cardX = lastCard.x + 320; // 카드 너비 + 여백
+                            cardX = lastCard.x + 320;
                             cardY = lastCard.y;
-                            // 경계를 벗어나면 다음 줄로
                             if (cardX > centerX + window.innerWidth / 2 - 280) {
                                 cardX = centerX - window.innerWidth / 2 + 100;
                                 cardY = lastCard.y + 250;
                             }
                         }
-
                         const constrained = constrainCardPosition(cardX, cardY);
-
                         group.cards[newId] = {
                             ...projectData,
                             x: constrained.x,
@@ -764,97 +931,30 @@
                 };
 
                 const closeModal = () => {
-                    showModal.value = false;
-                    editingProjectId.value = null;
-                };
-
-                // 카드 위치를 viewport 경계 내로 제한하는 함수
-                const constrainCardPosition = (x, y) => {
-                    const cardWidth = 280;
-                    const cardHeight = 200;
-                    const padding = 100; // 여백
-
-                    // canvas는 200% 크기이므로, 실제 사용 가능한 영역 계산
-                    // canvas의 중심이 (50%, 50%)에 있고, 실제로는 viewport 크기의 2배
-                    const canvasWidth = window.innerWidth * 2;
-                    const canvasHeight = window.innerHeight * 2;
-
-                    // canvas 좌표계에서 viewport 중심 기준으로 계산
-                    // 중심점: (canvasWidth/2, canvasHeight/2) = (window.innerWidth, window.innerHeight)
-                    const centerX = window.innerWidth;
-                    const centerY = window.innerHeight;
-
-                    // viewport 영역 내에 카드가 보이도록 제한
-                    // viewport는 중심에서 ±innerWidth/2, ±innerHeight/2 범위
-                    const minX = centerX - window.innerWidth / 2 + padding;
-                    const maxX = centerX + window.innerWidth / 2 - cardWidth - padding;
-                    const minY = centerY - window.innerHeight / 2 + padding;
-                    const maxY = centerY + window.innerHeight / 2 - cardHeight - padding;
-
-                    return {
-                        x: Math.max(minX, Math.min(maxX, x)),
-                        y: Math.max(minY, Math.min(maxY, y))
-                    };
+                    isProjectModalOpen.value = false;
+                    currentEditingProjectId.value = null;
                 };
 
                 const updateProjectPosition = (id, position) => {
                     if (!selectedProjectGroup.value) return;
                     const group = projectGroups[selectedProjectGroup.value];
                     if (group && group.cards && group.cards[id]) {
-                        // 카드 위치를 viewport 경계 내로 제한
                         const constrained = constrainCardPosition(position.x, position.y);
                         group.cards[id].x = constrained.x;
                         group.cards[id].y = constrained.y;
                     }
                 };
 
-                // 줌 기능
-                const handleWheel = (e) => {
-                    e.preventDefault();
-
-                    const delta = e.deltaY;
-                    const zoomIntensity = 0.1;
-
-                    if (delta < 0) {
-                        scale.value *= (1 + zoomIntensity);
-                    } else {
-                        scale.value *= (1 - zoomIntensity);
+                const saveAllProjects = async () => {
+                    const username = currentUser.value || 'guest';
+                    if (!currentUser.value) {
+                        currentUser.value = username;
+                        usernameInput.value = username;
                     }
-
-                    scale.value = Math.min(Math.max(0.3, scale.value), 3);
+                    await saveToServer(username, projectGroups);
                 };
 
-                const zoomIn = () => {
-                    scale.value = Math.min(scale.value * 1.2, 3);
-                };
-
-                const zoomOut = () => {
-                    scale.value = Math.max(scale.value * 0.8, 0.3);
-                };
-
-                // 캔버스 드래그
-                const startCanvasDrag = (e) => {
-                    if (e.target.closest('.project-card') || e.target.closest('.modal')) return;
-
-                    isDragging.value = true;
-                    dragStart.x = e.clientX - translateX.value;
-                    dragStart.y = e.clientY - translateY.value;
-                    document.body.style.cursor = 'grabbing';
-                };
-
-                const handleMouseMove = (e) => {
-                    if (!isDragging.value) return;
-
-                    translateX.value = e.clientX - dragStart.x;
-                    translateY.value = e.clientY - dragStart.y;
-                };
-
-                const handleMouseUp = () => {
-                    isDragging.value = false;
-                    document.body.style.cursor = 'grab';
-                };
-
-                // 프로젝트 그룹 관리
+                // 7. Group Management
                 const selectProjectGroup = (groupId) => {
                     selectedProjectGroup.value = groupId;
                     setTimeout(() => {
@@ -863,13 +963,13 @@
                 };
 
                 const openAddProjectGroupModal = () => {
-                    editingProjectGroupId.value = null;
-                    showProjectGroupModal.value = true;
+                    currentEditingGroupId.value = null;
+                    isGroupModalOpen.value = true;
                 };
 
                 const editProjectGroup = (groupId) => {
-                    editingProjectGroupId.value = groupId;
-                    showProjectGroupModal.value = true;
+                    currentEditingGroupId.value = groupId;
+                    isGroupModalOpen.value = true;
                 };
 
                 const deleteProjectGroup = (groupId) => {
@@ -884,8 +984,8 @@
                 };
 
                 const saveProjectGroup = (groupData) => {
-                    if (editingProjectGroupId.value) {
-                        projectGroups[editingProjectGroupId.value].name = groupData.name;
+                    if (currentEditingGroupId.value) {
+                        projectGroups[currentEditingGroupId.value].name = groupData.name;
                         showMessage('프로젝트 그룹이 수정되었습니다!');
                     } else {
                         const newGroupId = 'group_' + Date.now();
@@ -900,247 +1000,20 @@
                 };
 
                 const closeProjectGroupModal = () => {
-                    showProjectGroupModal.value = false;
-                    editingProjectGroupId.value = null;
+                    isGroupModalOpen.value = false;
+                    currentEditingGroupId.value = null;
                 };
 
-                // 모든 카드가 viewport 경계 내에 있는지 확인하고 조정
-                const ensureCardsInView = (skipFitView = false) => {
-                    if (!selectedProjectGroup.value) return false;
-                    const group = projectGroups[selectedProjectGroup.value];
-                    if (!group || !group.cards) return false;
-
-                    let needsUpdate = false;
-                    Object.keys(group.cards).forEach(id => {
-                        const card = group.cards[id];
-                        const constrained = constrainCardPosition(card.x, card.y);
-                        if (card.x !== constrained.x || card.y !== constrained.y) {
-                            card.x = constrained.x;
-                            card.y = constrained.y;
-                            needsUpdate = true;
-                        }
-                    });
-
-                    if (needsUpdate && !skipFitView) {
-                        nextTick(() => {
-                            fitProjectsToView();
-                        });
-                    }
-
-                    return needsUpdate;
-                };
-
-                // 뷰 조정
-                const fitProjectsToView = (targetScale = null) => {
-                    const projectKeys = Object.keys(currentProjects.value);
-                    if (projectKeys.length === 0) {
-                        // 카드가 없으면 중앙으로 리셋
-                        scale.value = 1;
-                        translateX.value = 0;
-                        translateY.value = 0;
-                        return;
-                    }
-
-                    // 먼저 모든 카드가 경계 내에 있는지 확인 (무한 루프 방지)
-                    ensureCardsInView(true);
-
-                    let minX = Infinity, minY = Infinity;
-                    let maxX = -Infinity, maxY = -Infinity;
-
-                    Object.values(currentProjects.value).forEach(project => {
-                        if (project && typeof project.x === 'number' && typeof project.y === 'number') {
-                            minX = Math.min(minX, project.x);
-                            minY = Math.min(minY, project.y);
-                            maxX = Math.max(maxX, project.x + 280);
-                            maxY = Math.max(maxY, project.y + 200);
-                        }
-                    });
-
-                    // 유효한 카드가 없으면 리턴
-                    if (minX === Infinity || minY === Infinity) {
-                        scale.value = 1;
-                        translateX.value = 0;
-                        translateY.value = 0;
-                        return;
-                    }
-
-                    const centerX = (minX + maxX) / 2;
-                    const centerY = (minY + maxY) / 2;
-
-                    // 스케일 계산
-                    if (targetScale !== null) {
-                        scale.value = targetScale;
-                    } else {
-                        const projectsWidth = maxX - minX;
-                        const projectsHeight = maxY - minY;
-
-                        // viewport 크기 (UI 요소 제외)
-                        const viewportWidth = window.innerWidth - 300; // 사이드바 등 고려
-                        const viewportHeight = window.innerHeight - 250; // 상하 UI 고려
-
-                        // 스케일 계산 (프로젝트들이 화면에 잘 보이도록)
-                        let calculatedScale = 1;
-                        if (projectsWidth > 0 && projectsHeight > 0) {
-                            const scaleX = (viewportWidth * 0.85) / projectsWidth;
-                            const scaleY = (viewportHeight * 0.85) / projectsHeight;
-                            calculatedScale = Math.min(scaleX, scaleY, 2);
-                            calculatedScale = Math.max(calculatedScale, 0.3);
-                        }
-                        scale.value = calculatedScale;
-                    }
-
-                    // 중심 맞추기
-                    // canvas는 200% 크기이고 중심이 (50%, 50%)에 있음
-                    // transform: translate(X, Y) translate(-50%, -50%) scale(S)
-                    // viewport 중심: (window.innerWidth / 2, window.innerHeight / 2)
-                    // 카드 중심을 viewport 중심에 맞추기
-                    // canvas 중심을 이동시켜서 카드 중심이 viewport 중심에 오도록
-                    // canvas는 200% 크기이므로, canvas의 중심(50%, 50%)은 window.innerWidth, window.innerHeight 좌표에 해당함
-                    // 따라서 viewport의 중심(window.innerWidth/2, window.innerHeight/2)에 맞추려면
-                    // canvas의 중심 좌표(window.innerWidth, window.innerHeight)를 기준으로 이동해야 함
-
-                    const viewportCenterX = window.innerWidth;
-                    const viewportCenterY = window.innerHeight;
-
-                    translateX.value = viewportCenterX - (centerX * scale.value);
-                    translateY.value = viewportCenterY - (centerY * scale.value);
-                };
-
-                const resetView = () => {
-                    if (Object.keys(currentProjects.value).length > 0) {
-                        setTimeout(() => {
-                            fitProjectsToView(1);
-                        }, 50);
-                    } else {
-                        scale.value = 1;
-                        translateX.value = 0;
-                        translateY.value = 0;
-                    }
-                };
-
-                // JSON 내보내기/가져오기
-                const exportToJSON = () => {
-                    // 사용자명이 없으면 기본 사용자명 사용
-                    const username = currentUser.value || 'guest';
-                    if (!currentUser.value) {
-                        currentUser.value = username;
-                        usernameInput.value = username;
-                    }
-
-                    const exportData = {
-                        username: username,
-                        exportDate: new Date().toISOString(),
-                        version: '2.0',
-                        projectGroups: projectGroups
-                    };
-
-                    const jsonString = JSON.stringify(exportData, null, 2);
-                    const blob = new Blob([jsonString], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `OPP_${username}_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
-                };
-
-                const triggerFileImport = () => {
-                    fileInput.value?.click();
-                };
-
-                const importFromJSON = (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        try {
-                            const importData = JSON.parse(e.target.result);
-
-                            // 버전 2.0 (projectGroups) 또는 버전 1.0 (projects) 지원
-                            let groupsToImport = null;
-                            if (importData.projectGroups) {
-                                groupsToImport = importData.projectGroups;
-                            } else if (importData.projects) {
-                                // 버전 1.0 형식: 마이그레이션
-                                groupsToImport = migrateToProjectGroups(importData.projects);
-                            } else {
-                                throw new Error('올바른 OPP JSON 파일이 아닙니다.');
-                            }
-
-                            if (importData.username) {
-                                currentUser.value = importData.username;
-                                usernameInput.value = importData.username;
-                            }
-
-                            Object.assign(projectGroups, groupsToImport);
-                            const firstGroupId = Object.keys(groupsToImport)[0];
-                            if (firstGroupId) {
-                                selectedProjectGroup.value = firstGroupId;
-                            }
-
-                            const totalCards = Object.values(groupsToImport).reduce((sum, group) => {
-                                return sum + Object.keys(group.cards || {}).length;
-                            }, 0);
-
-                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(groupsToImport).length}개 그룹, ${totalCards}개 카드)`);
-
-                            nextTick(() => {
-                                fitProjectsToView(1);
-                            });
-                        } catch (error) {
-                            console.error('가져오기 오류:', error);
-                            showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-
-                    event.target.value = '';
-                };
-
-                const handleLogin = (username) => {
-                    currentUser.value = username;
-                    usernameInput.value = username;
-                    showLoginModal.value = false;
-
-                    // 로컬 스토리지에 마지막 사용자 저장
-                    localStorage.setItem('opp_last_user', username);
-
-                    loadUserProjects();
-                };
-
-                const logout = () => {
-                    if (confirm('로그아웃 하시겠습니까?')) {
-                        localStorage.removeItem('opp_last_user');
-                        location.reload();
-                    }
-                };
-
-                // 이벤트 리스너
+                // 8. Lifecycle
                 onMounted(() => {
-                    console.log('onMounted - showLoginModal:', showLoginModal.value);
-
-                    // 마지막 사용자 확인
                     const lastUser = localStorage.getItem('opp_last_user');
-                    console.log('lastUser', lastUser);
-
                     if (lastUser) {
-                        console.log('lastUser exists, hiding modal');
                         currentUser.value = lastUser;
                         usernameInput.value = lastUser;
-                        showLoginModal.value = false;
+                        isLoginModalOpen.value = false;
                         loadUserProjects();
                     } else {
-                        console.log('lastUser is null');
-                        // 사용자명이 없으면 로그인 모달 표시
-                        console.log('Ensuring showLoginModal is true');
-                        showLoginModal.value = true;
-                        console.log('showLoginModal after setting:', showLoginModal.value);
+                        isLoginModalOpen.value = true;
                     }
 
                     document.addEventListener('mousemove', handleMouseMove);
@@ -1150,7 +1023,6 @@
                     window.addEventListener('resize', () => {
                         clearTimeout(resizeTimeout);
                         resizeTimeout = setTimeout(() => {
-                            // 리사이즈 시 카드 위치 재조정
                             if (Object.keys(currentProjects.value).length > 0) {
                                 ensureCardsInView(true);
                                 fitProjectsToView();
@@ -1158,7 +1030,6 @@
                         }, 300);
                     });
 
-                    // 초기 로드 시에도 뷰 조정
                     if (Object.keys(currentProjects.value).length > 0) {
                         setTimeout(() => {
                             fitProjectsToView(1);
@@ -1169,20 +1040,20 @@
                 return {
                     canvas,
                     fileInput,
-                    scale,
-                    translateX,
-                    translateY,
-                    isDragging,
+                    viewportScale,
+                    viewportX,
+                    viewportY,
+                    isViewportDragging,
                     projectGroups,
                     selectedProjectGroup,
                     currentProjects,
                     currentUser,
                     usernameInput,
-                    showModal,
-                    editingProjectId,
+                    isProjectModalOpen,
+                    currentEditingProjectId,
                     editingProject,
-                    showProjectGroupModal,
-                    editingProjectGroupId,
+                    isGroupModalOpen,
+                    currentEditingGroupId,
                     editingProjectGroup,
                     statusMessage,
                     canvasStyle,
@@ -1208,7 +1079,7 @@
                     exportToJSON,
                     triggerFileImport,
                     importFromJSON,
-                    showLoginModal,
+                    isLoginModalOpen,
                     handleLogin,
                     logout,
                     fitProjectsToView
