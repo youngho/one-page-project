@@ -36,6 +36,47 @@
             <p class="text-sm opacity-90">스크롤로 확대/축소, 드래그로 이동</p>
         </div>
 
+        <!-- Project List Sidebar -->
+        <div class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록</h2>
+                <button 
+                    @click="openAddProjectGroupModal"
+                    class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-all"
+                    title="새 프로젝트 그룹 추가"
+                >+</button>
+            </div>
+            <div class="space-y-2">
+                <div 
+                    v-for="(group, groupId) in projectGroups" 
+                    :key="groupId"
+                    @click="selectProjectGroup(groupId)"
+                    class="p-3 rounded-lg cursor-pointer transition-all"
+                    :class="selectedProjectGroup === groupId ? 'bg-indigo-500 text-white' : 'bg-gray-100 hover:bg-gray-200'"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold">{{ group.name }}</div>
+                        <div class="text-xs opacity-75">
+                            {{ Object.keys(group.cards || {}).length }}개
+                        </div>
+                    </div>
+                    <div class="flex gap-1 mt-2">
+                        <button 
+                            @click.stop="editProjectGroup(groupId)"
+                            class="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30"
+                        >✏️</button>
+                        <button 
+                            @click.stop="deleteProjectGroup(groupId)"
+                            class="px-2 py-1 text-xs rounded bg-red-500/20 hover:bg-red-500/30"
+                        >🗑️</button>
+                    </div>
+                </div>
+                <div v-if="Object.keys(projectGroups).length === 0" class="text-gray-500 text-sm text-center py-4">
+                    프로젝트 그룹이 없습니다
+                </div>
+            </div>
+        </div>
+
         <!-- Zoom Indicator -->
         <div class="fixed top-5 right-5 bg-white/90 px-5 py-4 rounded-lg font-bold text-indigo-500 z-[1000] shadow-lg">
             Zoom: {{ Math.round(scale * 100) }}%
@@ -114,7 +155,7 @@
                 :style="canvasStyle"
             >
                 <project-card
-                    v-for="(project, id) in projects"
+                    v-for="(project, id) in currentProjects"
                     :key="id"
                     :project="project"
                     :project-id="id"
@@ -133,6 +174,14 @@
             :is-editing="!!editingProjectId"
             @close="closeModal"
             @save="saveProject"
+        />
+
+        <project-group-modal
+            v-if="showProjectGroupModal"
+            :group="editingProjectGroup"
+            :is-editing="!!editingProjectGroupId"
+            @close="closeProjectGroupModal"
+            @save="saveProjectGroup"
         />
 
         <!-- Status Message -->
@@ -328,12 +377,74 @@
             `
         };
 
+        // ProjectGroupModal 컴포넌트
+        const ProjectGroupModal = {
+            props: {
+                group: Object,
+                isEditing: Boolean
+            },
+            emits: ['close', 'save'],
+            setup(props, { emit }) {
+                const form = reactive({
+                    name: props.group?.name || ''
+                });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    emit('save', {
+                        name: form.name
+                    });
+                };
+
+                return {
+                    form,
+                    handleSubmit
+                };
+            },
+            template: `
+                <div 
+                    class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center"
+                    @click.self="$emit('close')"
+                >
+                    <div class="bg-white p-8 rounded-3xl w-[90%] max-w-lg shadow-2xl">
+                        <h2 class="text-indigo-500 mb-5 text-2xl font-bold">
+                            {{ isEditing ? '프로젝트 그룹 편집' : '새 프로젝트 그룹 추가' }}
+                        </h2>
+                        <form @submit="handleSubmit">
+                            <div class="mb-4">
+                                <label class="block mb-1.5 text-gray-600 font-bold">프로젝트 그룹 이름</label>
+                                <input 
+                                    type="text" 
+                                    v-model="form.name" 
+                                    required
+                                    placeholder="예: 포트폴리오, 사이드 프로젝트"
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                            </div>
+                            <div class="flex gap-2.5 mt-5">
+                                <button 
+                                    type="submit"
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-indigo-500 text-white"
+                                >저장</button>
+                                <button 
+                                    type="button" 
+                                    @click="$emit('close')"
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-200 text-gray-600"
+                                >취소</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `
+        };
+
         // 메인 앱
         createApp({
             components: {
                 ProjectCard,
                 ProjectModal,
-                StatusMessage
+                StatusMessage,
+                ProjectGroupModal
             },
             setup() {
                 const canvas = ref(null);
@@ -345,11 +456,14 @@
                 const translateY = ref(0);
                 const isDragging = ref(false);
                 const dragStart = reactive({ x: 0, y: 0 });
-                const projects = reactive({});
+                const projectGroups = reactive({});
+                const selectedProjectGroup = ref(null);
                 const currentUser = ref('');
                 const usernameInput = ref('');
                 const showModal = ref(false);
                 const editingProjectId = ref(null);
+                const showProjectGroupModal = ref(false);
+                const editingProjectGroupId = ref(null);
                 const statusMessage = ref(null);
 
                 // API 설정
@@ -362,7 +476,20 @@
                 }));
 
                 const editingProject = computed(() => {
-                    return editingProjectId.value ? projects[editingProjectId.value] : null;
+                    if (!editingProjectId.value || !selectedProjectGroup.value) return null;
+                    const group = projectGroups[selectedProjectGroup.value];
+                    return group?.cards?.[editingProjectId.value] || null;
+                });
+
+                const currentProjects = computed(() => {
+                    if (!selectedProjectGroup.value || !projectGroups[selectedProjectGroup.value]) {
+                        return {};
+                    }
+                    return projectGroups[selectedProjectGroup.value].cards || {};
+                });
+
+                const editingProjectGroup = computed(() => {
+                    return editingProjectGroupId.value ? projectGroups[editingProjectGroupId.value] : null;
                 });
 
                 // 유틸리티 함수
@@ -370,11 +497,30 @@
                     statusMessage.value = { text: message, type };
                 };
 
+                // 데이터 마이그레이션: 기존 projects 형식을 projectGroups 형식으로 변환
+                const migrateToProjectGroups = (oldProjects) => {
+                    if (!oldProjects || Object.keys(oldProjects).length === 0) {
+                        return {};
+                    }
+                    // 기존 데이터가 이미 projectGroups 형식인지 확인
+                    const firstKey = Object.keys(oldProjects)[0];
+                    if (oldProjects[firstKey] && oldProjects[firstKey].name && oldProjects[firstKey].cards) {
+                        return oldProjects; // 이미 projectGroups 형식
+                    }
+                    // 기존 형식이면 변환
+                    return {
+                        'default': {
+                            name: '기본 프로젝트',
+                            cards: oldProjects
+                        }
+                    };
+                };
+
                 // 로컬스토리지
-                const saveToLocalStorage = (username, projectsData) => {
+                const saveToLocalStorage = (username, projectGroupsData) => {
                     try {
                         const key = `opp_projects_${username}`;
-                        localStorage.setItem(key, JSON.stringify(projectsData));
+                        localStorage.setItem(key, JSON.stringify(projectGroupsData));
                         showMessage('프로젝트가 저장되었습니다!');
                         return true;
                     } catch (error) {
@@ -388,7 +534,9 @@
                     try {
                         const key = `opp_projects_${username}`;
                         const data = localStorage.getItem(key);
-                        return data ? JSON.parse(data) : null;
+                        if (!data) return null;
+                        const parsed = JSON.parse(data);
+                        return migrateToProjectGroups(parsed);
                     } catch (error) {
                         console.error('로드 오류:', error);
                         return null;
@@ -396,12 +544,17 @@
                 };
 
                 // 서버 API
-                const saveToServer = async (username, projectsData) => {
+                const saveToServer = async (username, projectGroupsData) => {
                     if (!USE_SERVER) {
-                        return saveToLocalStorage(username, projectsData);
+                        return saveToLocalStorage(username, projectGroupsData);
                     }
                     
                     try {
+                        // 서버는 기존 형식(projects)을 기대하므로 변환 필요
+                        // 첫 번째 그룹의 cards를 projects로 변환 (임시)
+                        const firstGroupId = Object.keys(projectGroupsData)[0];
+                        const projectsData = firstGroupId ? projectGroupsData[firstGroupId].cards : {};
+                        
                         const response = await fetch(`${API_BASE_URL}/${username}`, {
                             method: 'POST',
                             headers: {
@@ -417,7 +570,7 @@
                         showMessage('프로젝트가 저장되었습니다!');
                     } catch (error) {
                         console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
-                        saveToLocalStorage(username, projectsData);
+                        saveToLocalStorage(username, projectGroupsData);
                     }
                 };
 
@@ -437,7 +590,8 @@
                         }
                         
                         const data = await response.json();
-                        return data.projects || null;
+                        const oldProjects = data.projects || null;
+                        return migrateToProjectGroups(oldProjects);
                     } catch (error) {
                         console.error('서버 연결 실패. 브라우저 저장소에서 로드합니다.', error);
                         return loadFromLocalStorage(username);
@@ -457,27 +611,45 @@
                     
                     currentUser.value = username;
                     
-                    const loadedProjects = await loadFromServer(username);
+                    const loadedGroups = await loadFromServer(username);
                     
-                    if (loadedProjects && Object.keys(loadedProjects).length > 0) {
-                        Object.assign(projects, loadedProjects);
+                    if (loadedGroups && Object.keys(loadedGroups).length > 0) {
+                        Object.assign(projectGroups, loadedGroups);
+                        // 첫 번째 그룹 선택
+                        const firstGroupId = Object.keys(loadedGroups)[0];
+                        selectedProjectGroup.value = firstGroupId;
+                        // 로드된 카드들의 위치를 경계 내로 조정
+                        ensureCardsInView(true);
                         showMessage('프로젝트를 불러왔습니다!');
                     } else {
-                        Object.assign(projects, {
-                            'p1': {
-                                title: '🎨 첫 프로젝트',
-                                desc: '여기에 프로젝트를 추가해보세요!',
-                                tags: ['시작하기'],
-                                x: 400,
-                                y: 300
+                        // 기본 프로젝트 그룹 생성
+                        const defaultGroupId = 'group_' + Date.now();
+                        // viewport 중심에 카드 배치
+                        const centerX = window.innerWidth;
+                        const centerY = window.innerHeight;
+                        const cardX = centerX - 140; // 카드 너비의 절반
+                        const cardY = centerY - 100; // 카드 높이의 절반
+                        
+                        projectGroups[defaultGroupId] = {
+                            name: '기본 프로젝트',
+                            cards: {
+                                'p1': {
+                                    title: '🎨 첫 프로젝트',
+                                    desc: '여기에 프로젝트를 추가해보세요!',
+                                    tags: ['시작하기'],
+                                    x: cardX,
+                                    y: cardY
+                                }
                             }
-                        });
+                        };
+                        selectedProjectGroup.value = defaultGroupId;
                         showMessage('새로운 사용자입니다. 환영합니다!');
                     }
                     
-                    nextTick(() => {
+                    // 약간의 지연 후 뷰 조정 (DOM 업데이트 대기)
+                    setTimeout(() => {
                         fitProjectsToView();
-                    });
+                    }, 100);
                 };
 
                 const saveAllProjects = async () => {
@@ -488,7 +660,7 @@
                         usernameInput.value = username;
                     }
                     
-                    await saveToServer(username, projects);
+                    await saveToServer(username, projectGroups);
                 };
 
                 const openAddModal = () => {
@@ -498,6 +670,16 @@
                         currentUser.value = defaultUser;
                         usernameInput.value = defaultUser;
                         showMessage('기본 사용자명(guest)으로 프로젝트를 추가합니다.', 'success');
+                    }
+                    
+                    // 프로젝트 그룹이 없으면 생성
+                    if (!selectedProjectGroup.value || Object.keys(projectGroups).length === 0) {
+                        const defaultGroupId = 'group_' + Date.now();
+                        projectGroups[defaultGroupId] = {
+                            name: '기본 프로젝트',
+                            cards: {}
+                        };
+                        selectedProjectGroup.value = defaultGroupId;
                     }
                     
                     editingProjectId.value = null;
@@ -510,32 +692,65 @@
                 };
 
                 const deleteProject = (id) => {
+                    if (!selectedProjectGroup.value) return;
                     if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
-                        delete projects[id];
+                        const group = projectGroups[selectedProjectGroup.value];
+                        if (group && group.cards) {
+                            delete group.cards[id];
+                        }
                         showMessage('프로젝트가 삭제되었습니다!');
-                        nextTick(() => {
+                        setTimeout(() => {
                             fitProjectsToView();
-                        });
+                        }, 100);
                     }
                 };
 
                 const saveProject = (projectData) => {
+                    if (!selectedProjectGroup.value) return;
+                    
+                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!group.cards) {
+                        group.cards = {};
+                    }
+                    
                     if (editingProjectId.value) {
-                        Object.assign(projects[editingProjectId.value], projectData);
+                        Object.assign(group.cards[editingProjectId.value], projectData);
                         showMessage('프로젝트가 수정되었습니다!');
                     } else {
                         const newId = 'p' + Date.now();
-                        projects[newId] = {
+                        // 새 카드의 위치를 viewport 중앙 근처로 설정
+                        const centerX = window.innerWidth;
+                        const centerY = window.innerHeight;
+                        // 기존 카드들의 위치를 고려하여 배치
+                        const existingCards = Object.values(group.cards);
+                        let cardX = centerX - 140;
+                        let cardY = centerY - 100;
+                        
+                        if (existingCards.length > 0) {
+                            // 기존 카드 옆에 배치
+                            const lastCard = existingCards[existingCards.length - 1];
+                            cardX = lastCard.x + 320; // 카드 너비 + 여백
+                            cardY = lastCard.y;
+                            // 경계를 벗어나면 다음 줄로
+                            if (cardX > centerX + window.innerWidth / 2 - 280) {
+                                cardX = centerX - window.innerWidth / 2 + 100;
+                                cardY = lastCard.y + 250;
+                            }
+                        }
+                        
+                        const constrained = constrainCardPosition(cardX, cardY);
+                        
+                        group.cards[newId] = {
                             ...projectData,
-                            x: 400 + Math.random() * 200,
-                            y: 300 + Math.random() * 200
+                            x: constrained.x,
+                            y: constrained.y
                         };
                         showMessage('프로젝트가 추가되었습니다!');
                     }
                     closeModal();
-                    nextTick(() => {
+                    setTimeout(() => {
                         fitProjectsToView();
-                    });
+                    }, 100);
                 };
 
                 const closeModal = () => {
@@ -543,10 +758,43 @@
                     editingProjectId.value = null;
                 };
 
+                // 카드 위치를 viewport 경계 내로 제한하는 함수
+                const constrainCardPosition = (x, y) => {
+                    const cardWidth = 280;
+                    const cardHeight = 200;
+                    const padding = 100; // 여백
+                    
+                    // canvas는 200% 크기이므로, 실제 사용 가능한 영역 계산
+                    // canvas의 중심이 (50%, 50%)에 있고, 실제로는 viewport 크기의 2배
+                    const canvasWidth = window.innerWidth * 2;
+                    const canvasHeight = window.innerHeight * 2;
+                    
+                    // canvas 좌표계에서 viewport 중심 기준으로 계산
+                    // 중심점: (canvasWidth/2, canvasHeight/2) = (window.innerWidth, window.innerHeight)
+                    const centerX = window.innerWidth;
+                    const centerY = window.innerHeight;
+                    
+                    // viewport 영역 내에 카드가 보이도록 제한
+                    // viewport는 중심에서 ±innerWidth/2, ±innerHeight/2 범위
+                    const minX = centerX - window.innerWidth / 2 + padding;
+                    const maxX = centerX + window.innerWidth / 2 - cardWidth - padding;
+                    const minY = centerY - window.innerHeight / 2 + padding;
+                    const maxY = centerY + window.innerHeight / 2 - cardHeight - padding;
+                    
+                    return {
+                        x: Math.max(minX, Math.min(maxX, x)),
+                        y: Math.max(minY, Math.min(maxY, y))
+                    };
+                };
+
                 const updateProjectPosition = (id, position) => {
-                    if (projects[id]) {
-                        projects[id].x = position.x;
-                        projects[id].y = position.y;
+                    if (!selectedProjectGroup.value) return;
+                    const group = projectGroups[selectedProjectGroup.value];
+                    if (group && group.cards && group.cards[id]) {
+                        // 카드 위치를 viewport 경계 내로 제한
+                        const constrained = constrainCardPosition(position.x, position.y);
+                        group.cards[id].x = constrained.x;
+                        group.cards[id].y = constrained.y;
                     }
                 };
 
@@ -596,40 +844,153 @@
                     document.body.style.cursor = 'grab';
                 };
 
+                // 프로젝트 그룹 관리
+                const selectProjectGroup = (groupId) => {
+                    selectedProjectGroup.value = groupId;
+                    setTimeout(() => {
+                        fitProjectsToView();
+                    }, 100);
+                };
+
+                const openAddProjectGroupModal = () => {
+                    editingProjectGroupId.value = null;
+                    showProjectGroupModal.value = true;
+                };
+
+                const editProjectGroup = (groupId) => {
+                    editingProjectGroupId.value = groupId;
+                    showProjectGroupModal.value = true;
+                };
+
+                const deleteProjectGroup = (groupId) => {
+                    if (confirm('이 프로젝트 그룹을 삭제하시겠습니까? 모든 카드가 삭제됩니다.')) {
+                        delete projectGroups[groupId];
+                        if (selectedProjectGroup.value === groupId) {
+                            const remainingGroups = Object.keys(projectGroups);
+                            selectedProjectGroup.value = remainingGroups.length > 0 ? remainingGroups[0] : null;
+                        }
+                        showMessage('프로젝트 그룹이 삭제되었습니다!');
+                    }
+                };
+
+                const saveProjectGroup = (groupData) => {
+                    if (editingProjectGroupId.value) {
+                        projectGroups[editingProjectGroupId.value].name = groupData.name;
+                        showMessage('프로젝트 그룹이 수정되었습니다!');
+                    } else {
+                        const newGroupId = 'group_' + Date.now();
+                        projectGroups[newGroupId] = {
+                            name: groupData.name,
+                            cards: {}
+                        };
+                        selectedProjectGroup.value = newGroupId;
+                        showMessage('프로젝트 그룹이 추가되었습니다!');
+                    }
+                    closeProjectGroupModal();
+                };
+
+                const closeProjectGroupModal = () => {
+                    showProjectGroupModal.value = false;
+                    editingProjectGroupId.value = null;
+                };
+
+                // 모든 카드가 viewport 경계 내에 있는지 확인하고 조정
+                const ensureCardsInView = (skipFitView = false) => {
+                    if (!selectedProjectGroup.value) return false;
+                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!group || !group.cards) return false;
+                    
+                    let needsUpdate = false;
+                    Object.keys(group.cards).forEach(id => {
+                        const card = group.cards[id];
+                        const constrained = constrainCardPosition(card.x, card.y);
+                        if (card.x !== constrained.x || card.y !== constrained.y) {
+                            card.x = constrained.x;
+                            card.y = constrained.y;
+                            needsUpdate = true;
+                        }
+                    });
+                    
+                    if (needsUpdate && !skipFitView) {
+                        nextTick(() => {
+                            fitProjectsToView();
+                        });
+                    }
+                    
+                    return needsUpdate;
+                };
+
                 // 뷰 조정
                 const fitProjectsToView = () => {
-                    const projectKeys = Object.keys(projects);
-                    if (projectKeys.length === 0) return;
+                    const projectKeys = Object.keys(currentProjects.value);
+                    if (projectKeys.length === 0) {
+                        // 카드가 없으면 중앙으로 리셋
+                        scale.value = 1;
+                        translateX.value = 0;
+                        translateY.value = 0;
+                        return;
+                    }
+                    
+                    // 먼저 모든 카드가 경계 내에 있는지 확인 (무한 루프 방지)
+                    ensureCardsInView(true);
                     
                     let minX = Infinity, minY = Infinity;
                     let maxX = -Infinity, maxY = -Infinity;
                     
-                    Object.values(projects).forEach(project => {
-                        minX = Math.min(minX, project.x);
-                        minY = Math.min(minY, project.y);
-                        maxX = Math.max(maxX, project.x + 280);
-                        maxY = Math.max(maxY, project.y + 200);
+                    Object.values(currentProjects.value).forEach(project => {
+                        if (project && typeof project.x === 'number' && typeof project.y === 'number') {
+                            minX = Math.min(minX, project.x);
+                            minY = Math.min(minY, project.y);
+                            maxX = Math.max(maxX, project.x + 280);
+                            maxY = Math.max(maxY, project.y + 200);
+                        }
                     });
+                    
+                    // 유효한 카드가 없으면 리턴
+                    if (minX === Infinity || minY === Infinity) {
+                        scale.value = 1;
+                        translateX.value = 0;
+                        translateY.value = 0;
+                        return;
+                    }
                     
                     const centerX = (minX + maxX) / 2;
                     const centerY = (minY + maxY) / 2;
                     const projectsWidth = maxX - minX;
                     const projectsHeight = maxY - minY;
-                    const viewportWidth = window.innerWidth - 100;
-                    const viewportHeight = window.innerHeight - 200;
                     
-                    const scaleX = (viewportWidth * 0.8) / projectsWidth;
-                    const scaleY = (viewportHeight * 0.8) / projectsHeight;
-                    scale.value = Math.min(scaleX, scaleY, 2);
-                    scale.value = Math.max(scale.value, 0.3);
+                    // viewport 크기 (UI 요소 제외)
+                    const viewportWidth = window.innerWidth - 300; // 사이드바 등 고려
+                    const viewportHeight = window.innerHeight - 250; // 상하 UI 고려
                     
-                    translateX.value = (window.innerWidth / 2) - (centerX * scale.value);
-                    translateY.value = (window.innerHeight / 2) - (centerY * scale.value);
+                    // 스케일 계산 (프로젝트들이 화면에 잘 보이도록)
+                    let calculatedScale = 1;
+                    if (projectsWidth > 0 && projectsHeight > 0) {
+                        const scaleX = (viewportWidth * 0.85) / projectsWidth;
+                        const scaleY = (viewportHeight * 0.85) / projectsHeight;
+                        calculatedScale = Math.min(scaleX, scaleY, 2);
+                        calculatedScale = Math.max(calculatedScale, 0.3);
+                    }
+                    scale.value = calculatedScale;
+                    
+                    // 중심 맞추기
+                    // canvas는 200% 크기이고 중심이 (50%, 50%)에 있음
+                    // transform: translate(X, Y) translate(-50%, -50%) scale(S)
+                    // viewport 중심: (window.innerWidth / 2, window.innerHeight / 2)
+                    // 카드 중심을 viewport 중심에 맞추기
+                    const viewportCenterX = window.innerWidth / 2;
+                    const viewportCenterY = window.innerHeight / 2;
+                    
+                    // canvas 중심을 이동시켜서 카드 중심이 viewport 중심에 오도록
+                    translateX.value = viewportCenterX - (centerX * scale.value);
+                    translateY.value = viewportCenterY - (centerY * scale.value);
                 };
 
                 const resetView = () => {
-                    if (Object.keys(projects).length > 0) {
-                        fitProjectsToView();
+                    if (Object.keys(currentProjects.value).length > 0) {
+                        setTimeout(() => {
+                            fitProjectsToView();
+                        }, 50);
                     } else {
                         scale.value = 1;
                         translateX.value = 0;
@@ -649,8 +1010,8 @@
                     const exportData = {
                         username: username,
                         exportDate: new Date().toISOString(),
-                        version: '1.0',
-                        projects: projects
+                        version: '2.0',
+                        projectGroups: projectGroups
                     };
                     
                     const jsonString = JSON.stringify(exportData, null, 2);
@@ -681,7 +1042,14 @@
                         try {
                             const importData = JSON.parse(e.target.result);
                             
-                            if (!importData.projects) {
+                            // 버전 2.0 (projectGroups) 또는 버전 1.0 (projects) 지원
+                            let groupsToImport = null;
+                            if (importData.projectGroups) {
+                                groupsToImport = importData.projectGroups;
+                            } else if (importData.projects) {
+                                // 버전 1.0 형식: 마이그레이션
+                                groupsToImport = migrateToProjectGroups(importData.projects);
+                            } else {
                                 throw new Error('올바른 OPP JSON 파일이 아닙니다.');
                             }
                             
@@ -690,9 +1058,17 @@
                                 usernameInput.value = importData.username;
                             }
                             
-                            Object.assign(projects, importData.projects);
+                            Object.assign(projectGroups, groupsToImport);
+                            const firstGroupId = Object.keys(groupsToImport)[0];
+                            if (firstGroupId) {
+                                selectedProjectGroup.value = firstGroupId;
+                            }
                             
-                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(importData.projects).length}개)`);
+                            const totalCards = Object.values(groupsToImport).reduce((sum, group) => {
+                                return sum + Object.keys(group.cards || {}).length;
+                            }, 0);
+                            
+                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(groupsToImport).length}개 그룹, ${totalCards}개 카드)`);
                             
                             nextTick(() => {
                                 fitProjectsToView();
@@ -716,11 +1092,20 @@
                     window.addEventListener('resize', () => {
                         clearTimeout(resizeTimeout);
                         resizeTimeout = setTimeout(() => {
-                            if (Object.keys(projects).length > 0) {
+                            // 리사이즈 시 카드 위치 재조정
+                            if (Object.keys(currentProjects.value).length > 0) {
+                                ensureCardsInView(true);
                                 fitProjectsToView();
                             }
                         }, 300);
                     });
+                    
+                    // 초기 로드 시에도 뷰 조정
+                    if (Object.keys(currentProjects.value).length > 0) {
+                        setTimeout(() => {
+                            fitProjectsToView();
+                        }, 200);
+                    }
                 });
 
                 return {
@@ -730,12 +1115,17 @@
                     translateX,
                     translateY,
                     isDragging,
-                    projects,
+                    projectGroups,
+                    selectedProjectGroup,
+                    currentProjects,
                     currentUser,
                     usernameInput,
                     showModal,
                     editingProjectId,
                     editingProject,
+                    showProjectGroupModal,
+                    editingProjectGroupId,
+                    editingProjectGroup,
                     statusMessage,
                     canvasStyle,
                     loadUserProjects,
@@ -746,6 +1136,12 @@
                     saveProject,
                     closeModal,
                     updateProjectPosition,
+                    selectProjectGroup,
+                    openAddProjectGroupModal,
+                    editProjectGroup,
+                    deleteProjectGroup,
+                    saveProjectGroup,
+                    closeProjectGroupModal,
                     handleWheel,
                     zoomIn,
                     zoomOut,
