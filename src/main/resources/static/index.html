@@ -94,8 +94,11 @@
                 class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">📤
                 가져오기</button>
             <input type="file" ref="fileInput" accept=".json" class="hidden" @change="importFromJSON">
-            <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold">
+            <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold flex items-center gap-2">
                 👤 {{ currentUser }}
+                <button @click="logout"
+                    class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors"
+                    title="로그아웃">로그아웃</button>
             </span>
         </div>
 
@@ -415,7 +418,7 @@
                 };
             },
             template: `
-                <div class="fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center backdrop-blur-sm" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
+                <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center backdrop-blur-sm" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
                     <div class="bg-white p-10 rounded-3xl w-[90%] max-w-md shadow-2xl text-center animate-slide-in">
                         <h1 class="text-4xl font-bold mb-2">📦</h1>
                         <h2 class="text-indigo-500 mb-6 text-2xl font-bold">One Page Project</h2>
@@ -478,7 +481,6 @@
 
                 // API 설정
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
-                const USE_SERVER = true;
 
                 // 계산된 속성
                 const canvasStyle = computed(() => ({
@@ -568,10 +570,6 @@
 
                 // 서버 API
                 const saveToServer = async (username, projectGroupsData) => {
-                    if (!USE_SERVER) {
-                        return saveToLocalStorage(username, projectGroupsData);
-                    }
-
                     try {
                         // 서버는 기존 형식(projects)을 기대하므로 변환 필요
                         // 첫 번째 그룹의 cards를 projects로 변환 (임시)
@@ -598,10 +596,6 @@
                 };
 
                 const loadFromServer = async (username) => {
-                    if (!USE_SERVER) {
-                        return loadFromLocalStorage(username);
-                    }
-
                     try {
                         const response = await fetch(`${API_BASE_URL}/${username}`);
 
@@ -624,14 +618,6 @@
                 // 프로젝트 관리
                 const loadUserProjects = async () => {
                     let username = usernameInput.value.trim();
-
-                    // 사용자명이 없으면 기본 사용자명 사용
-                    constrainCardPosition
-                    if (!username) {
-                        username = 'guest';
-                        usernameInput.value = username;
-                        showMessage('기본 사용자명(guest)으로 시작합니다.', 'success');
-                    }
 
                     currentUser.value = username;
 
@@ -1128,6 +1114,13 @@
                     loadUserProjects();
                 };
 
+                const logout = () => {
+                    if (confirm('로그아웃 하시겠습니까?')) {
+                        localStorage.removeItem('opp_last_user');
+                        location.reload();
+                    }
+                };
+
                 // 이벤트 리스너
                 onMounted(() => {
                     console.log('onMounted - showLoginModal:', showLoginModal.value);
@@ -1217,6 +1210,7 @@
                     importFromJSON,
                     showLoginModal,
                     handleLogin,
+                    logout,
                     fitProjectsToView
                 };
             }
