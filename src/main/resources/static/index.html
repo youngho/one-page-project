@@ -38,8 +38,8 @@
     <div id="app">
         <!-- Title -->
         <div class="fixed top-5 left-5 text-white z-[1000] drop-shadow-lg">
-            <h1 class="text-3xl font-bold mb-1">📦 My Projects</h1>
-            <p class="text-sm opacity-90">스크롤로 확대/축소, 드래그로 이동</p>
+            <h1 class="text-3xl font-bold mb-1">📦 {{ selectedProjectGroup && projectGroups[selectedProjectGroup] ?
+                projectGroups[selectedProjectGroup].name : 'My Projects' }}</h1>
         </div>
 
         <!-- Project List Sidebar -->
