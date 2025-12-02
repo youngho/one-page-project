@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Portfolio</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         * {
             margin: 0;
@@ -48,6 +49,7 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
             cursor: move;
+            user-select: none;
         }
 
         .project-card:hover {
@@ -56,6 +58,11 @@
 
         .project-card.editing {
             border: 3px solid #667eea;
+        }
+
+        .project-card.dragging {
+            opacity: 0.8;
+            z-index: 1000;
         }
 
         .project-card h2 {
@@ -203,6 +210,7 @@
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
+            margin-right: 5px;
         }
 
         .user-panel button:hover {
@@ -355,543 +363,658 @@
     </style>
 </head>
 <body>
-    <div class="title">
-        <h1>📦 My Projects</h1>
-        <p>스크롤로 확대/축소, 드래그로 이동</p>
-    </div>
-
-    <div class="zoom-indicator">
-        Zoom: <span id="zoomLevel">100</span>%
-    </div>
-
-    <div class="user-panel">
-        <input type="text" id="usernameInput" placeholder="사용자명 입력">
-        <button onclick="loadUserProjects()">로드</button>
-        <button onclick="saveAllProjects()">저장</button>
-        <button onclick="exportToJSON()">📥 내보내기</button>
-        <button onclick="document.getElementById('importFile').click()">📤 가져오기</button>
-        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importFromJSON(event)">
-        <span id="currentUser" style="margin-left: 10px; color: #667eea; font-weight: bold;"></span>
-    </div>
-
-    <button class="add-project-btn" onclick="openAddModal()">+</button>
-
-    <div class="controls">
-        <button class="control-btn" onclick="resetView()">⌂</button>
-        <button class="control-btn" onclick="zoomIn()">+</button>
-        <button class="control-btn" onclick="zoomOut()">−</button>
-    </div>
-
-    <div class="viewport">
-        <div class="canvas" id="canvas"></div>
-    </div>
-
-    <!-- 모달 -->
-    <div class="modal" id="projectModal">
-        <div class="modal-content">
-            <h2 id="modalTitle">새 프로젝트 추가</h2>
-            <form id="projectForm">
-                <div class="form-group">
-                    <label>제목 (이모지 포함)</label>
-                    <input type="text" id="projectTitle" required>
-                </div>
-                <div class="form-group">
-                    <label>설명</label>
-                    <textarea id="projectDesc" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>태그 (쉼표로 구분)</label>
-                    <input type="text" id="projectTags" placeholder="React, Node.js, MongoDB">
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" class="save-btn">저장</button>
-                    <button type="button" class="cancel-btn" onclick="closeModal()">취소</button>
-                </div>
-            </form>
+    <div id="app">
+        <div class="title">
+            <h1>📦 My Projects</h1>
+            <p>스크롤로 확대/축소, 드래그로 이동</p>
         </div>
+
+        <div class="zoom-indicator">
+            Zoom: {{ Math.round(scale * 100) }}%
+        </div>
+
+        <div class="user-panel">
+            <input 
+                type="text" 
+                v-model="usernameInput" 
+                placeholder="사용자명 입력"
+                @keyup.enter="loadUserProjects"
+            >
+            <button @click="loadUserProjects">로드</button>
+            <button @click="saveAllProjects">저장</button>
+            <button @click="exportToJSON">📥 내보내기</button>
+            <button @click="triggerFileImport">📤 가져오기</button>
+            <input 
+                type="file" 
+                ref="fileInput" 
+                accept=".json" 
+                style="display: none;" 
+                @change="importFromJSON"
+            >
+            <span v-if="currentUser" style="margin-left: 10px; color: #667eea; font-weight: bold;">
+                👤 {{ currentUser }}
+            </span>
+        </div>
+
+        <button class="add-project-btn" @click="openAddModal">+</button>
+
+        <div class="controls">
+            <button class="control-btn" @click="resetView">⌂</button>
+            <button class="control-btn" @click="zoomIn">+</button>
+            <button class="control-btn" @click="zoomOut">−</button>
+        </div>
+
+        <div 
+            class="viewport" 
+            @wheel.prevent="handleWheel"
+            @mousedown="startCanvasDrag"
+            :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+        >
+            <div 
+                class="canvas" 
+                ref="canvas"
+                :style="canvasStyle"
+            >
+                <project-card
+                    v-for="(project, id) in projects"
+                    :key="id"
+                    :project="project"
+                    :project-id="id"
+                    :scale="scale"
+                    @edit="editProject"
+                    @delete="deleteProject"
+                    @update-position="updateProjectPosition"
+                />
+            </div>
+        </div>
+
+        <project-modal
+            v-if="showModal"
+            :project="editingProject"
+            :is-editing="!!editingProjectId"
+            @close="closeModal"
+            @save="saveProject"
+        />
+
+        <status-message
+            v-if="statusMessage"
+            :message="statusMessage.text"
+            :type="statusMessage.type"
+            @close="statusMessage = null"
+        />
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const zoomLevelEl = document.getElementById('zoomLevel');
-        const currentUserEl = document.getElementById('currentUser');
-        const modal = document.getElementById('projectModal');
-        const projectForm = document.getElementById('projectForm');
-        
-        let scale = 1;
-        let translateX = 0;
-        let translateY = 0;
-        let isDragging = false;
-        let startX, startY;
-        let currentUser = '';
-        let projects = {};
-        let editingProjectId = null;
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
-        // API 설정
-        const API_BASE_URL = 'http://localhost:8080/api/projects';
-        const USE_SERVER = false; // 서버 사용 여부 (true: 백엔드 사용, false: 브라우저 저장소 사용)
+        // ProjectCard 컴포넌트
+        const ProjectCard = {
+            props: {
+                project: Object,
+                projectId: String,
+                scale: Number
+            },
+            emits: ['edit', 'delete', 'update-position'],
+            setup(props, { emit }) {
+                const cardRef = ref(null);
+                const isDragging = ref(false);
+                const dragStart = reactive({ x: 0, y: 0, originalX: 0, originalY: 0 });
 
-        // 변환 적용
-        function updateTransform() {
-            canvas.style.transform = `translate(${translateX}px, ${translateY}px) translate(-50%, -50%) scale(${scale})`;
-            zoomLevelEl.textContent = Math.round(scale * 100);
-        }
-
-        // 상태 메시지 표시
-        function showMessage(message, type = 'success') {
-            const msg = document.createElement('div');
-            msg.className = `status-message ${type}`;
-            msg.textContent = message;
-            document.body.appendChild(msg);
-            
-            setTimeout(() => {
-                msg.remove();
-            }, 3000);
-        }
-
-        // 브라우저 저장소에 저장
-        function saveToLocalStorage(username, projectsData) {
-            try {
-                const key = `opp_projects_${username}`;
-                localStorage.setItem(key, JSON.stringify(projectsData));
-                showMessage('프로젝트가 저장되었습니다!');
-                return true;
-            } catch (error) {
-                console.error('저장 오류:', error);
-                showMessage('저장 중 오류가 발생했습니다.', 'error');
-                return false;
-            }
-        }
-
-        // 브라우저 저장소에서 로드
-        function loadFromLocalStorage(username) {
-            try {
-                const key = `opp_projects_${username}`;
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
-            } catch (error) {
-                console.error('로드 오류:', error);
-                return null;
-            }
-        }
-
-        // 서버에 저장 (실제 백엔드 API 호출)
-        async function saveToServer(username, projectsData) {
-            // 서버 사용 안 함 → 브라우저 저장소 사용
-            if (!USE_SERVER) {
-                return saveToLocalStorage(username, projectsData);
-            }
-            
-            // 서버 사용
-            try {
-                const response = await fetch(`${API_BASE_URL}/${username}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(projectsData)
-                });
-                
-                if (!response.ok) {
-                    throw new Error('저장 실패');
-                }
-                
-                const result = await response.json();
-                showMessage('프로젝트가 저장되었습니다!');
-            } catch (error) {
-                console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
-                saveToLocalStorage(username, projectsData);
-            }
-        }
-
-        // 서버에서 로드 (실제 백엔드 API 호출)
-        async function loadFromServer(username) {
-            // 서버 사용 안 함 → 브라우저 저장소 사용
-            if (!USE_SERVER) {
-                return loadFromLocalStorage(username);
-            }
-            
-            // 서버 사용
-            try {
-                const response = await fetch(`${API_BASE_URL}/${username}`);
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        return loadFromLocalStorage(username);
-                    }
-                    throw new Error('로드 실패');
-                }
-                
-                const data = await response.json();
-                return data.projects || null;
-            } catch (error) {
-                console.error('서버 연결 실패. 브라우저 저장소에서 로드합니다.', error);
-                return loadFromLocalStorage(username);
-            }
-        }
-
-        // 프로젝트 카드 렌더링
-        function renderProjects() {
-            canvas.innerHTML = '';
-            
-            Object.entries(projects).forEach(([id, project]) => {
-                const card = document.createElement('div');
-                card.className = 'project-card';
-                card.style.left = project.x + 'px';
-                card.style.top = project.y + 'px';
-                card.dataset.id = id;
-                
-                const tags = project.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
-                
-                card.innerHTML = `
-                    <h2>${project.title}</h2>
-                    <p>${project.desc}</p>
-                    <div>${tags}</div>
-                    <div class="card-actions">
-                        <button class="card-btn edit-btn" onclick="editProject('${id}')">✏️ 편집</button>
-                        <button class="card-btn delete-btn" onclick="deleteProject('${id}')">🗑️ 삭제</button>
-                    </div>
-                `;
-                
-                // 카드 드래그
-                card.addEventListener('mousedown', (e) => {
+                const startDrag = (e) => {
                     if (e.target.closest('.card-btn')) return;
-                    
                     e.stopPropagation();
-                    let cardStartX = e.clientX;
-                    let cardStartY = e.clientY;
-                    let cardOriginalX = parseInt(card.style.left);
-                    let cardOriginalY = parseInt(card.style.top);
                     
+                    isDragging.value = true;
+                    dragStart.x = e.clientX;
+                    dragStart.y = e.clientY;
+                    dragStart.originalX = props.project.x;
+                    dragStart.originalY = props.project.y;
+
                     const moveCard = (e) => {
-                        const dx = (e.clientX - cardStartX) / scale;
-                        const dy = (e.clientY - cardStartY) / scale;
-                        card.style.left = (cardOriginalX + dx) + 'px';
-                        card.style.top = (cardOriginalY + dy) + 'px';
+                        if (!isDragging.value) return;
+                        const dx = (e.clientX - dragStart.x) / props.scale;
+                        const dy = (e.clientY - dragStart.y) / props.scale;
+                        emit('update-position', props.projectId, {
+                            x: dragStart.originalX + dx,
+                            y: dragStart.originalY + dy
+                        });
                     };
-                    
+
                     const stopMoveCard = () => {
+                        isDragging.value = false;
                         document.removeEventListener('mousemove', moveCard);
                         document.removeEventListener('mouseup', stopMoveCard);
-                        
-                        projects[id].x = parseInt(card.style.left);
-                        projects[id].y = parseInt(card.style.top);
                     };
-                    
+
                     document.addEventListener('mousemove', moveCard);
                     document.addEventListener('mouseup', stopMoveCard);
+                };
+
+                return {
+                    cardRef,
+                    isDragging,
+                    startDrag
+                };
+            },
+            template: `
+                <div 
+                    class="project-card"
+                    :class="{ dragging: isDragging }"
+                    :style="{ left: project.x + 'px', top: project.y + 'px' }"
+                    @mousedown="startDrag"
+                >
+                    <h2>{{ project.title }}</h2>
+                    <p>{{ project.desc }}</p>
+                    <div>
+                        <span v-for="tag in project.tags" :key="tag" class="tag">{{ tag }}</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="card-btn edit-btn" @click.stop="$emit('edit', projectId)">✏️ 편집</button>
+                        <button class="card-btn delete-btn" @click.stop="$emit('delete', projectId)">🗑️ 삭제</button>
+                    </div>
+                </div>
+            `
+        };
+
+        // ProjectModal 컴포넌트
+        const ProjectModal = {
+            props: {
+                project: Object,
+                isEditing: Boolean
+            },
+            emits: ['close', 'save'],
+            setup(props, { emit }) {
+                const form = reactive({
+                    title: props.project?.title || '',
+                    desc: props.project?.desc || '',
+                    tags: props.project?.tags?.join(', ') || ''
                 });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    const tags = form.tags.split(',').map(t => t.trim()).filter(t => t);
+                    emit('save', {
+                        title: form.title,
+                        desc: form.desc,
+                        tags
+                    });
+                };
+
+                return {
+                    form,
+                    handleSubmit
+                };
+            },
+            template: `
+                <div class="modal active" @click.self="$emit('close')">
+                    <div class="modal-content">
+                        <h2>{{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}</h2>
+                        <form @submit="handleSubmit">
+                            <div class="form-group">
+                                <label>제목 (이모지 포함)</label>
+                                <input type="text" v-model="form.title" required>
+                            </div>
+                            <div class="form-group">
+                                <label>설명</label>
+                                <textarea v-model="form.desc" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>태그 (쉼표로 구분)</label>
+                                <input type="text" v-model="form.tags" placeholder="React, Node.js, MongoDB">
+                            </div>
+                            <div class="modal-actions">
+                                <button type="submit" class="save-btn">저장</button>
+                                <button type="button" class="cancel-btn" @click="$emit('close')">취소</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `
+        };
+
+        // StatusMessage 컴포넌트
+        const StatusMessage = {
+            props: {
+                message: String,
+                type: String
+            },
+            emits: ['close'],
+            setup(props, { emit }) {
+                setTimeout(() => {
+                    emit('close');
+                }, 3000);
+            },
+            template: `
+                <div class="status-message" :class="type">
+                    {{ message }}
+                </div>
+            `
+        };
+
+        // 메인 앱
+        createApp({
+            components: {
+                ProjectCard,
+                ProjectModal,
+                StatusMessage
+            },
+            setup() {
+                const canvas = ref(null);
+                const fileInput = ref(null);
                 
-                canvas.appendChild(card);
-            });
-            
-            // 렌더링 후 화면에 맞추기
-            setTimeout(() => fitProjectsToView(), 100);
-        }
+                // 상태
+                const scale = ref(1);
+                const translateX = ref(0);
+                const translateY = ref(0);
+                const isDragging = ref(false);
+                const dragStart = reactive({ x: 0, y: 0 });
+                const projects = reactive({});
+                const currentUser = ref('');
+                const usernameInput = ref('');
+                const showModal = ref(false);
+                const editingProjectId = ref(null);
+                const statusMessage = ref(null);
 
-        // 사용자 프로젝트 로드
-        async function loadUserProjects() {
-            const username = document.getElementById('usernameInput').value.trim();
-            
-            if (!username) {
-                showMessage('사용자명을 입력해주세요!', 'error');
-                return;
-            }
-            
-            currentUser = username;
-            currentUserEl.textContent = `👤 ${username}`;
-            
-            const loadedProjects = await loadFromServer(username);
-            
-            if (loadedProjects && Object.keys(loadedProjects).length > 0) {
-                projects = loadedProjects;
-                showMessage('프로젝트를 불러왔습니다!');
-            } else {
-                projects = {
-                    'p1': {
-                        title: '🎨 첫 프로젝트',
-                        desc: '여기에 프로젝트를 추가해보세요!',
-                        tags: ['시작하기'],
-                        x: 400,
-                        y: 300
+                // API 설정
+                const API_BASE_URL = 'http://localhost:8080/api/projects';
+                const USE_SERVER = false;
+
+                // 계산된 속성
+                const canvasStyle = computed(() => ({
+                    transform: `translate(${translateX.value}px, ${translateY.value}px) translate(-50%, -50%) scale(${scale.value})`
+                }));
+
+                const editingProject = computed(() => {
+                    return editingProjectId.value ? projects[editingProjectId.value] : null;
+                });
+
+                // 유틸리티 함수
+                const showMessage = (message, type = 'success') => {
+                    statusMessage.value = { text: message, type };
+                };
+
+                const updateTransform = () => {
+                    // Vue의 반응성으로 자동 업데이트됨
+                };
+
+                // 로컬스토리지
+                const saveToLocalStorage = (username, projectsData) => {
+                    try {
+                        const key = `opp_projects_${username}`;
+                        localStorage.setItem(key, JSON.stringify(projectsData));
+                        showMessage('프로젝트가 저장되었습니다!');
+                        return true;
+                    } catch (error) {
+                        console.error('저장 오류:', error);
+                        showMessage('저장 중 오류가 발생했습니다.', 'error');
+                        return false;
                     }
                 };
-                showMessage('새로운 사용자입니다. 환영합니다!');
-            }
-            
-            renderProjects();
-        }
 
-        // 모든 프로젝트 저장
-        async function saveAllProjects() {
-            if (!currentUser) {
-                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                return;
-            }
-            
-            await saveToServer(currentUser, projects);
-        }
+                const loadFromLocalStorage = (username) => {
+                    try {
+                        const key = `opp_projects_${username}`;
+                        const data = localStorage.getItem(key);
+                        return data ? JSON.parse(data) : null;
+                    } catch (error) {
+                        console.error('로드 오류:', error);
+                        return null;
+                    }
+                };
 
-        // 모달 열기
-        function openAddModal() {
-            if (!currentUser) {
-                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                return;
-            }
-            
-            editingProjectId = null;
-            document.getElementById('modalTitle').textContent = '새 프로젝트 추가';
-            document.getElementById('projectTitle').value = '';
-            document.getElementById('projectDesc').value = '';
-            document.getElementById('projectTags').value = '';
-            modal.classList.add('active');
-        }
+                // 서버 API
+                const saveToServer = async (username, projectsData) => {
+                    if (!USE_SERVER) {
+                        return saveToLocalStorage(username, projectsData);
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/${username}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(projectsData)
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('저장 실패');
+                        }
+                        
+                        showMessage('프로젝트가 저장되었습니다!');
+                    } catch (error) {
+                        console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
+                        saveToLocalStorage(username, projectsData);
+                    }
+                };
 
-        // 프로젝트 편집
-        function editProject(id) {
-            editingProjectId = id;
-            const project = projects[id];
-            
-            document.getElementById('modalTitle').textContent = '프로젝트 편집';
-            document.getElementById('projectTitle').value = project.title;
-            document.getElementById('projectDesc').value = project.desc;
-            document.getElementById('projectTags').value = project.tags.join(', ');
-            modal.classList.add('active');
-        }
+                const loadFromServer = async (username) => {
+                    if (!USE_SERVER) {
+                        return loadFromLocalStorage(username);
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/${username}`);
+                        
+                        if (!response.ok) {
+                            if (response.status === 404) {
+                                return loadFromLocalStorage(username);
+                            }
+                            throw new Error('로드 실패');
+                        }
+                        
+                        const data = await response.json();
+                        return data.projects || null;
+                    } catch (error) {
+                        console.error('서버 연결 실패. 브라우저 저장소에서 로드합니다.', error);
+                        return loadFromLocalStorage(username);
+                    }
+                };
 
-        // 프로젝트 삭제
-        function deleteProject(id) {
-            if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
-                delete projects[id];
-                renderProjects();
-                showMessage('프로젝트가 삭제되었습니다!');
-            }
-        }
+                // 프로젝트 관리
+                const loadUserProjects = async () => {
+                    const username = usernameInput.value.trim();
+                    
+                    if (!username) {
+                        showMessage('사용자명을 입력해주세요!', 'error');
+                        return;
+                    }
+                    
+                    currentUser.value = username;
+                    
+                    const loadedProjects = await loadFromServer(username);
+                    
+                    if (loadedProjects && Object.keys(loadedProjects).length > 0) {
+                        Object.assign(projects, loadedProjects);
+                        showMessage('프로젝트를 불러왔습니다!');
+                    } else {
+                        Object.assign(projects, {
+                            'p1': {
+                                title: '🎨 첫 프로젝트',
+                                desc: '여기에 프로젝트를 추가해보세요!',
+                                tags: ['시작하기'],
+                                x: 400,
+                                y: 300
+                            }
+                        });
+                        showMessage('새로운 사용자입니다. 환영합니다!');
+                    }
+                    
+                    nextTick(() => {
+                        fitProjectsToView();
+                    });
+                };
 
-        // 모달 닫기
-        function closeModal() {
-            modal.classList.remove('active');
-            editingProjectId = null;
-        }
+                const saveAllProjects = async () => {
+                    if (!currentUser.value) {
+                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                        return;
+                    }
+                    
+                    await saveToServer(currentUser.value, projects);
+                };
 
-        // 폼 제출
-        projectForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const title = document.getElementById('projectTitle').value;
-            const desc = document.getElementById('projectDesc').value;
-            const tagsStr = document.getElementById('projectTags').value;
-            const tags = tagsStr.split(',').map(t => t.trim()).filter(t => t);
-            
-            if (editingProjectId) {
-                projects[editingProjectId].title = title;
-                projects[editingProjectId].desc = desc;
-                projects[editingProjectId].tags = tags;
-            } else {
-                const newId = 'p' + Date.now();
-                projects[newId] = {
-                    title,
-                    desc,
-                    tags,
-                    x: 400 + Math.random() * 200,
-                    y: 300 + Math.random() * 200
+                const openAddModal = () => {
+                    if (!currentUser.value) {
+                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                        return;
+                    }
+                    
+                    editingProjectId.value = null;
+                    showModal.value = true;
+                };
+
+                const editProject = (id) => {
+                    editingProjectId.value = id;
+                    showModal.value = true;
+                };
+
+                const deleteProject = (id) => {
+                    if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
+                        delete projects[id];
+                        showMessage('프로젝트가 삭제되었습니다!');
+                        nextTick(() => {
+                            fitProjectsToView();
+                        });
+                    }
+                };
+
+                const saveProject = (projectData) => {
+                    if (editingProjectId.value) {
+                        Object.assign(projects[editingProjectId.value], projectData);
+                        showMessage('프로젝트가 수정되었습니다!');
+                    } else {
+                        const newId = 'p' + Date.now();
+                        projects[newId] = {
+                            ...projectData,
+                            x: 400 + Math.random() * 200,
+                            y: 300 + Math.random() * 200
+                        };
+                        showMessage('프로젝트가 추가되었습니다!');
+                    }
+                    closeModal();
+                    nextTick(() => {
+                        fitProjectsToView();
+                    });
+                };
+
+                const closeModal = () => {
+                    showModal.value = false;
+                    editingProjectId.value = null;
+                };
+
+                const updateProjectPosition = (id, position) => {
+                    if (projects[id]) {
+                        projects[id].x = position.x;
+                        projects[id].y = position.y;
+                    }
+                };
+
+                // 줌 기능
+                const handleWheel = (e) => {
+                    e.preventDefault();
+                    
+                    const delta = e.deltaY;
+                    const zoomIntensity = 0.1;
+                    
+                    if (delta < 0) {
+                        scale.value *= (1 + zoomIntensity);
+                    } else {
+                        scale.value *= (1 - zoomIntensity);
+                    }
+                    
+                    scale.value = Math.min(Math.max(0.3, scale.value), 3);
+                };
+
+                const zoomIn = () => {
+                    scale.value = Math.min(scale.value * 1.2, 3);
+                };
+
+                const zoomOut = () => {
+                    scale.value = Math.max(scale.value * 0.8, 0.3);
+                };
+
+                // 캔버스 드래그
+                const startCanvasDrag = (e) => {
+                    if (e.target.closest('.project-card') || e.target.closest('.modal')) return;
+                    
+                    isDragging.value = true;
+                    dragStart.x = e.clientX - translateX.value;
+                    dragStart.y = e.clientY - translateY.value;
+                    document.body.style.cursor = 'grabbing';
+                };
+
+                const handleMouseMove = (e) => {
+                    if (!isDragging.value) return;
+                    
+                    translateX.value = e.clientX - dragStart.x;
+                    translateY.value = e.clientY - dragStart.y;
+                };
+
+                const handleMouseUp = () => {
+                    isDragging.value = false;
+                    document.body.style.cursor = 'grab';
+                };
+
+                // 뷰 조정
+                const fitProjectsToView = () => {
+                    const projectKeys = Object.keys(projects);
+                    if (projectKeys.length === 0) return;
+                    
+                    let minX = Infinity, minY = Infinity;
+                    let maxX = -Infinity, maxY = -Infinity;
+                    
+                    Object.values(projects).forEach(project => {
+                        minX = Math.min(minX, project.x);
+                        minY = Math.min(minY, project.y);
+                        maxX = Math.max(maxX, project.x + 280);
+                        maxY = Math.max(maxY, project.y + 200);
+                    });
+                    
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    const projectsWidth = maxX - minX;
+                    const projectsHeight = maxY - minY;
+                    const viewportWidth = window.innerWidth - 100;
+                    const viewportHeight = window.innerHeight - 200;
+                    
+                    const scaleX = (viewportWidth * 0.8) / projectsWidth;
+                    const scaleY = (viewportHeight * 0.8) / projectsHeight;
+                    scale.value = Math.min(scaleX, scaleY, 2);
+                    scale.value = Math.max(scale.value, 0.3);
+                    
+                    translateX.value = (window.innerWidth / 2) - (centerX * scale.value);
+                    translateY.value = (window.innerHeight / 2) - (centerY * scale.value);
+                };
+
+                const resetView = () => {
+                    if (Object.keys(projects).length > 0) {
+                        fitProjectsToView();
+                    } else {
+                        scale.value = 1;
+                        translateX.value = 0;
+                        translateY.value = 0;
+                    }
+                };
+
+                // JSON 내보내기/가져오기
+                const exportToJSON = () => {
+                    if (!currentUser.value) {
+                        showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
+                        return;
+                    }
+                    
+                    const exportData = {
+                        username: currentUser.value,
+                        exportDate: new Date().toISOString(),
+                        version: '1.0',
+                        projects: projects
+                    };
+                    
+                    const jsonString = JSON.stringify(exportData, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `OPP_${currentUser.value}_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
+                };
+
+                const triggerFileImport = () => {
+                    fileInput.value?.click();
+                };
+
+                const importFromJSON = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const importData = JSON.parse(e.target.result);
+                            
+                            if (!importData.projects) {
+                                throw new Error('올바른 OPP JSON 파일이 아닙니다.');
+                            }
+                            
+                            if (importData.username) {
+                                currentUser.value = importData.username;
+                                usernameInput.value = importData.username;
+                            }
+                            
+                            Object.assign(projects, importData.projects);
+                            
+                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(importData.projects).length}개)`);
+                            
+                            nextTick(() => {
+                                fitProjectsToView();
+                            });
+                        } catch (error) {
+                            console.error('가져오기 오류:', error);
+                            showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                    
+                    event.target.value = '';
+                };
+
+                // 이벤트 리스너
+                onMounted(() => {
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                    
+                    let resizeTimeout;
+                    window.addEventListener('resize', () => {
+                        clearTimeout(resizeTimeout);
+                        resizeTimeout = setTimeout(() => {
+                            if (Object.keys(projects).length > 0) {
+                                fitProjectsToView();
+                            }
+                        }, 300);
+                    });
+                });
+
+                return {
+                    canvas,
+                    fileInput,
+                    scale,
+                    translateX,
+                    translateY,
+                    isDragging,
+                    projects,
+                    currentUser,
+                    usernameInput,
+                    showModal,
+                    editingProjectId,
+                    editingProject,
+                    statusMessage,
+                    canvasStyle,
+                    loadUserProjects,
+                    saveAllProjects,
+                    openAddModal,
+                    editProject,
+                    deleteProject,
+                    saveProject,
+                    closeModal,
+                    updateProjectPosition,
+                    handleWheel,
+                    zoomIn,
+                    zoomOut,
+                    startCanvasDrag,
+                    resetView,
+                    exportToJSON,
+                    triggerFileImport,
+                    importFromJSON
                 };
             }
-            
-            renderProjects();
-            closeModal();
-            showMessage(editingProjectId ? '프로젝트가 수정되었습니다!' : '프로젝트가 추가되었습니다!');
-        });
-
-        // 줌 기능
-        document.querySelector('.viewport').addEventListener('wheel', (e) => {
-            e.preventDefault();
-            
-            const delta = e.deltaY;
-            const zoomIntensity = 0.1;
-            
-            if (delta < 0) {
-                scale *= (1 + zoomIntensity);
-            } else {
-                scale *= (1 - zoomIntensity);
-            }
-            
-            scale = Math.min(Math.max(0.3, scale), 3);
-            updateTransform();
-        }, { passive: false });
-
-        // 캔버스 드래그 기능
-        document.querySelector('.viewport').addEventListener('mousedown', (e) => {
-            if (e.target.closest('.project-card') || e.target.closest('.modal')) return;
-            
-            isDragging = true;
-            startX = e.clientX - translateX;
-            startY = e.clientY - translateY;
-            document.body.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            
-            translateX = e.clientX - startX;
-            translateY = e.clientY - startY;
-            updateTransform();
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            document.body.style.cursor = 'grab';
-        });
-
-        // 컨트롤 버튼
-        function zoomIn() {
-            scale = Math.min(scale * 1.2, 3);
-            updateTransform();
-        }
-
-        function zoomOut() {
-            scale = Math.max(scale * 0.8, 0.3);
-            updateTransform();
-        }
-
-        function resetView() {
-            if (Object.keys(projects).length > 0) {
-                fitProjectsToView();
-            } else {
-                scale = 1;
-                translateX = 0;
-                translateY = 0;
-                updateTransform();
-            }
-        }
-
-        // 모달 외부 클릭시 닫기
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // 프로젝트들을 화면에 꽉 차게 보여주기
-        function fitProjectsToView() {
-            if (Object.keys(projects).length === 0) return;
-            
-            // 모든 프로젝트의 경계 계산
-            let minX = Infinity, minY = Infinity;
-            let maxX = -Infinity, maxY = -Infinity;
-            
-            Object.values(projects).forEach(project => {
-                minX = Math.min(minX, project.x);
-                minY = Math.min(minY, project.y);
-                maxX = Math.max(maxX, project.x + 280); // 카드 너비 280
-                maxY = Math.max(maxY, project.y + 200); // 카드 높이 약 200
-            });
-            
-            // 프로젝트들의 중심점
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
-            
-            // 프로젝트들의 영역 크기
-            const projectsWidth = maxX - minX;
-            const projectsHeight = maxY - minY;
-            
-            // 뷰포트 크기 (UI 요소 제외)
-            const viewportWidth = window.innerWidth - 100; // 여백 고려
-            const viewportHeight = window.innerHeight - 200; // 상하 UI 제외
-            
-            // 적절한 스케일 계산 (80% 정도만 채우기)
-            const scaleX = (viewportWidth * 0.8) / projectsWidth;
-            const scaleY = (viewportHeight * 0.8) / projectsHeight;
-            scale = Math.min(scaleX, scaleY, 2); // 최대 2배까지만
-            scale = Math.max(scale, 0.3); // 최소 0.3배
-            
-            // 중심 맞추기
-            translateX = (window.innerWidth / 2) - (centerX * scale);
-            translateY = (window.innerHeight / 2) - (centerY * scale);
-            
-            updateTransform();
-        }
-        
-        // 윈도우 리사이즈 시 자동 조정
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if (Object.keys(projects).length > 0) {
-                    fitProjectsToView();
-                }
-            }, 300);
-        });
-        
-        // 초기화
-        updateTransform();
-        
-        // JSON 내보내기
-        function exportToJSON() {
-            if (!currentUser) {
-                showMessage('먼저 사용자명을 입력하고 로드해주세요!', 'error');
-                return;
-            }
-            
-            const exportData = {
-                username: currentUser,
-                exportDate: new Date().toISOString(),
-                version: '1.0',
-                projects: projects
-            };
-            
-            const jsonString = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `OPP_${currentUser}_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
-        }
-        
-        // JSON 가져오기
-        function importFromJSON(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importData = JSON.parse(e.target.result);
-                    
-                    // 데이터 유효성 검사
-                    if (!importData.projects) {
-                        throw new Error('올바른 OPP JSON 파일이 아닙니다.');
-                    }
-                    
-                    // 사용자명 설정
-                    if (importData.username) {
-                        currentUser = importData.username;
-                        document.getElementById('usernameInput').value = currentUser;
-                        currentUserEl.textContent = `👤 ${currentUser}`;
-                    }
-                    
-                    // 프로젝트 로드
-                    projects = importData.projects;
-                    renderProjects();
-                    
-                    showMessage(`프로젝트를 가져왔습니다! (${Object.keys(projects).length}개)`);
-                } catch (error) {
-                    console.error('가져오기 오류:', error);
-                    showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
-                }
-            };
-            reader.readAsText(file);
-            
-            // 파일 입력 초기화
-            event.target.value = '';
-        }
+        }).mount('#app');
     </script>
 </body>
 </html>
