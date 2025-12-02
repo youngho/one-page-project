@@ -4,352 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             cursor: grab;
         }
-
         body:active {
             cursor: grabbing;
         }
-
-        .viewport {
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .canvas {
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: 50%;
-            left: 50%;
-            transform-origin: center center;
-            transition: transform 0.1s ease-out;
-        }
-
-        .project-card {
-            position: absolute;
-            width: 280px;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-            cursor: move;
-            user-select: none;
-        }
-
-        .project-card:hover {
-            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
-        }
-
-        .project-card.editing {
-            border: 3px solid #667eea;
-        }
-
-        .project-card.dragging {
-            opacity: 0.8;
-            z-index: 1000;
-        }
-
-        .project-card h2 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 24px;
-        }
-
-        .project-card p {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .project-card .tag {
-            display: inline-block;
-            background: #f0f0f0;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            color: #667eea;
-            margin-right: 5px;
-            margin-top: 10px;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .project-card:hover .card-actions {
-            opacity: 1;
-        }
-
-        .card-btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .edit-btn {
-            background: #667eea;
-            color: white;
-        }
-
-        .delete-btn {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .card-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .zoom-indicator {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.9);
-            padding: 15px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            color: #667eea;
-            z-index: 1000;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-        }
-
-        .control-btn {
-            width: 50px;
-            height: 50px;
-            background: rgba(255,255,255,0.9);
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-        }
-
-        .control-btn:hover {
-            background: white;
-            transform: scale(1.1);
-        }
-
-        .title {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            color: white;
-            z-index: 1000;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-
-        .title h1 {
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        .title p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .user-panel {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.9);
-            padding: 15px 20px;
-            border-radius: 10px;
-            z-index: 1000;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-
-        .user-panel input {
-            padding: 8px 12px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            margin-right: 10px;
-            font-size: 14px;
-        }
-
-        .user-panel button {
-            padding: 8px 15px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-            margin-right: 5px;
-        }
-
-        .user-panel button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-
-        .add-project-btn {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background: #51cf66;
-            border: none;
-            border-radius: 50%;
-            font-size: 32px;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            z-index: 1000;
-            transition: all 0.3s;
-        }
-
-        .add-project-btn:hover {
-            background: #40c057;
-            transform: scale(1.1);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .modal-content h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-weight: bold;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 14px;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .modal-actions button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-
-        .save-btn {
-            background: #667eea;
-            color: white;
-        }
-
-        .cancel-btn {
-            background: #e0e0e0;
-            color: #666;
-        }
-
-        .modal-actions button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .status-message {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 10px;
-            z-index: 3000;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            animation: slideIn 0.3s ease;
-        }
-
-        .status-message.success {
-            background: #51cf66;
-            color: white;
-        }
-
-        .status-message.error {
-            background: #ff6b6b;
-            color: white;
-        }
-
         @keyframes slideIn {
             from {
                 transform: translateX(400px);
@@ -360,58 +23,93 @@
                 opacity: 1;
             }
         }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease;
+        }
     </style>
 </head>
-<body>
+<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-indigo-500 to-purple-600 font-sans">
     <div id="app">
-        <div class="title">
-            <h1>📦 My Projects</h1>
-            <p>스크롤로 확대/축소, 드래그로 이동</p>
+        <!-- Title -->
+        <div class="fixed top-5 left-5 text-white z-[1000] drop-shadow-lg">
+            <h1 class="text-3xl font-bold mb-1">📦 My Projects</h1>
+            <p class="text-sm opacity-90">스크롤로 확대/축소, 드래그로 이동</p>
         </div>
 
-        <div class="zoom-indicator">
+        <!-- Zoom Indicator -->
+        <div class="fixed top-5 right-5 bg-white/90 px-5 py-4 rounded-lg font-bold text-indigo-500 z-[1000] shadow-lg">
             Zoom: {{ Math.round(scale * 100) }}%
         </div>
 
-        <div class="user-panel">
+        <!-- User Panel -->
+        <div class="fixed bottom-5 left-5 bg-white/90 px-5 py-4 rounded-lg z-[1000] shadow-lg">
             <input 
                 type="text" 
                 v-model="usernameInput" 
                 placeholder="사용자명 입력"
                 @keyup.enter="loadUserProjects"
+                class="px-3 py-2 border-2 border-indigo-500 rounded-lg mr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-            <button @click="loadUserProjects">로드</button>
-            <button @click="saveAllProjects">저장</button>
-            <button @click="exportToJSON">📥 내보내기</button>
-            <button @click="triggerFileImport">📤 가져오기</button>
+            <button 
+                @click="loadUserProjects"
+                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5"
+            >로드</button>
+            <button 
+                @click="saveAllProjects"
+                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5"
+            >저장</button>
+            <button 
+                @click="exportToJSON"
+                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5"
+            >📥 내보내기</button>
+            <button 
+                @click="triggerFileImport"
+                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5"
+            >📤 가져오기</button>
             <input 
                 type="file" 
                 ref="fileInput" 
                 accept=".json" 
-                style="display: none;" 
+                class="hidden" 
                 @change="importFromJSON"
             >
-            <span v-if="currentUser" style="margin-left: 10px; color: #667eea; font-weight: bold;">
+            <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold">
                 👤 {{ currentUser }}
             </span>
         </div>
 
-        <button class="add-project-btn" @click="openAddModal">+</button>
+        <!-- Add Project Button -->
+        <button 
+            @click="openAddModal"
+            class="fixed bottom-20 right-5 w-15 h-15 bg-green-500 border-none rounded-full text-3xl text-white cursor-pointer shadow-lg z-[1000] transition-all hover:bg-green-600 hover:scale-110"
+            style="width: 60px; height: 60px;"
+        >+</button>
 
-        <div class="controls">
-            <button class="control-btn" @click="resetView">⌂</button>
-            <button class="control-btn" @click="zoomIn">+</button>
-            <button class="control-btn" @click="zoomOut">−</button>
+        <!-- Controls -->
+        <div class="fixed bottom-5 right-5 flex gap-2.5 z-[1000]">
+            <button 
+                @click="resetView"
+                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110"
+            >⌂</button>
+            <button 
+                @click="zoomIn"
+                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110"
+            >+</button>
+            <button 
+                @click="zoomOut"
+                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110"
+            >−</button>
         </div>
 
+        <!-- Viewport -->
         <div 
-            class="viewport" 
+            class="w-screen h-screen overflow-hidden relative"
             @wheel.prevent="handleWheel"
             @mousedown="startCanvasDrag"
             :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
         >
             <div 
-                class="canvas" 
+                class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
                 ref="canvas"
                 :style="canvasStyle"
             >
@@ -428,6 +126,7 @@
             </div>
         </div>
 
+        <!-- Modal -->
         <project-modal
             v-if="showModal"
             :project="editingProject"
@@ -436,6 +135,7 @@
             @save="saveProject"
         />
 
+        <!-- Status Message -->
         <status-message
             v-if="statusMessage"
             :message="statusMessage.text"
@@ -456,12 +156,11 @@
             },
             emits: ['edit', 'delete', 'update-position'],
             setup(props, { emit }) {
-                const cardRef = ref(null);
                 const isDragging = ref(false);
                 const dragStart = reactive({ x: 0, y: 0, originalX: 0, originalY: 0 });
 
                 const startDrag = (e) => {
-                    if (e.target.closest('.card-btn')) return;
+                    if (e.target.closest('button')) return;
                     e.stopPropagation();
                     
                     isDragging.value = true;
@@ -491,26 +190,35 @@
                 };
 
                 return {
-                    cardRef,
                     isDragging,
                     startDrag
                 };
             },
             template: `
                 <div 
-                    class="project-card"
-                    :class="{ dragging: isDragging }"
-                    :style="{ left: project.x + 'px', top: project.y + 'px' }"
+                    class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 cursor-move select-none group"
+                    :class="{ 'opacity-80 z-[1000]': isDragging }"
+                    :style="{ left: project.x + 'px', top: project.y + 'px', width: '280px' }"
                     @mousedown="startDrag"
                 >
-                    <h2>{{ project.title }}</h2>
-                    <p>{{ project.desc }}</p>
+                    <h2 class="text-indigo-500 mb-4 text-2xl font-bold">{{ project.title }}</h2>
+                    <p class="text-gray-600 leading-relaxed mb-4">{{ project.desc }}</p>
                     <div>
-                        <span v-for="tag in project.tags" :key="tag" class="tag">{{ tag }}</span>
+                        <span 
+                            v-for="tag in project.tags" 
+                            :key="tag" 
+                            class="inline-block bg-gray-100 px-3 py-1 rounded-2xl text-xs text-indigo-500 mr-1.5 mt-2.5"
+                        >{{ tag }}</span>
                     </div>
-                    <div class="card-actions">
-                        <button class="card-btn edit-btn" @click.stop="$emit('edit', projectId)">✏️ 편집</button>
-                        <button class="card-btn delete-btn" @click.stop="$emit('delete', projectId)">🗑️ 삭제</button>
+                    <div class="flex gap-2.5 mt-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <button 
+                            @click.stop="$emit('edit', projectId)"
+                            class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        >✏️ 편집</button>
+                        <button 
+                            @click.stop="$emit('delete', projectId)"
+                            class="px-4 py-2 bg-red-500 text-white border-none rounded-lg cursor-pointer text-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        >🗑️ 삭제</button>
                     </div>
                 </div>
             `
@@ -546,25 +254,51 @@
                 };
             },
             template: `
-                <div class="modal active" @click.self="$emit('close')">
-                    <div class="modal-content">
-                        <h2>{{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}</h2>
+                <div 
+                    class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center"
+                    @click.self="$emit('close')"
+                >
+                    <div class="bg-white p-8 rounded-3xl w-[90%] max-w-lg shadow-2xl">
+                        <h2 class="text-indigo-500 mb-5 text-2xl font-bold">
+                            {{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}
+                        </h2>
                         <form @submit="handleSubmit">
-                            <div class="form-group">
-                                <label>제목 (이모지 포함)</label>
-                                <input type="text" v-model="form.title" required>
+                            <div class="mb-4">
+                                <label class="block mb-1.5 text-gray-600 font-bold">제목 (이모지 포함)</label>
+                                <input 
+                                    type="text" 
+                                    v-model="form.title" 
+                                    required
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
                             </div>
-                            <div class="form-group">
-                                <label>설명</label>
-                                <textarea v-model="form.desc" required></textarea>
+                            <div class="mb-4">
+                                <label class="block mb-1.5 text-gray-600 font-bold">설명</label>
+                                <textarea 
+                                    v-model="form.desc" 
+                                    required
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm resize-y min-h-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                ></textarea>
                             </div>
-                            <div class="form-group">
-                                <label>태그 (쉼표로 구분)</label>
-                                <input type="text" v-model="form.tags" placeholder="React, Node.js, MongoDB">
+                            <div class="mb-4">
+                                <label class="block mb-1.5 text-gray-600 font-bold">태그 (쉼표로 구분)</label>
+                                <input 
+                                    type="text" 
+                                    v-model="form.tags" 
+                                    placeholder="React, Node.js, MongoDB"
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
                             </div>
-                            <div class="modal-actions">
-                                <button type="submit" class="save-btn">저장</button>
-                                <button type="button" class="cancel-btn" @click="$emit('close')">취소</button>
+                            <div class="flex gap-2.5 mt-5">
+                                <button 
+                                    type="submit"
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-indigo-500 text-white"
+                                >저장</button>
+                                <button 
+                                    type="button" 
+                                    @click="$emit('close')"
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-200 text-gray-600"
+                                >취소</button>
                             </div>
                         </form>
                     </div>
@@ -585,7 +319,10 @@
                 }, 3000);
             },
             template: `
-                <div class="status-message" :class="type">
+                <div 
+                    class="fixed top-20 right-5 px-5 py-4 rounded-lg z-[3000] shadow-lg animate-slide-in"
+                    :class="type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'"
+                >
                     {{ message }}
                 </div>
             `
@@ -631,10 +368,6 @@
                 // 유틸리티 함수
                 const showMessage = (message, type = 'success') => {
                     statusMessage.value = { text: message, type };
-                };
-
-                const updateTransform = () => {
-                    // Vue의 반응성으로 자동 업데이트됨
                 };
 
                 // 로컬스토리지
