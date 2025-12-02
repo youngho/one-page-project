@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Portfolio</title>
+    <title>One Page Project</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -47,7 +47,7 @@
             class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록</h2>
-                <button @click="openAddProjectGroupModal"
+                <button @click="openAddModal"
                     class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-all"
                     title="새 프로젝트 그룹 추가">+</button>
             </div>
@@ -99,11 +99,6 @@
             </span>
         </div>
 
-        <!-- Add Project Button -->
-        <button @click="openAddModal"
-            class="fixed bottom-20 right-5 w-15 h-15 bg-green-500 border-none rounded-full text-3xl text-white cursor-pointer shadow-lg z-[1000] transition-all hover:bg-green-600 hover:scale-110"
-            style="width: 60px; height: 60px;">+</button>
-
         <!-- Controls -->
         <div class="fixed bottom-5 right-5 flex gap-2.5 z-[1000]">
             <button @click="resetView"
@@ -138,9 +133,18 @@
         <!-- Status Message -->
         <status-message v-if="statusMessage" :message="statusMessage.text" :type="statusMessage.type"
             @close="statusMessage = null" />
+
+        <!-- Login Modal -->
+        <login-modal v-if="showLoginModal" @login="handleLogin" />
     </div>
 
     <script>
+        if (typeof Vue === 'undefined') {
+            console.error('❌ Vue is not loaded! Check CDN connection.');
+        } else {
+            console.log('✅ Vue is loaded successfully');
+        }
+
         const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
         // ProjectCard 컴포넌트
@@ -385,15 +389,70 @@
             `
         };
 
+        // LoginModal 컴포넌트
+        const LoginModal = {
+            name: 'LoginModal',
+            emits: ['login'],
+            setup(props, { emit }) {
+                console.log('LoginModal setup() called!');
+                const username = ref('');
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if (username.value.trim()) {
+                        emit('login', username.value.trim());
+                    }
+                };
+
+                // 컴포넌트가 마운트되었는지 확인
+                onMounted(() => {
+                    console.log('🎉 LoginModal mounted!');
+                });
+
+                return {
+                    username,
+                    handleSubmit
+                };
+            },
+            template: `
+                <div class="fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center backdrop-blur-sm" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
+                    <div class="bg-white p-10 rounded-3xl w-[90%] max-w-md shadow-2xl text-center animate-slide-in">
+                        <h1 class="text-4xl font-bold mb-2">📦</h1>
+                        <h2 class="text-indigo-500 mb-6 text-2xl font-bold">One Page Project</h2>
+                        <p class="text-gray-500 mb-8">프로젝트 관리를 시작하려면<br>사용자 이름을 입력하세요.</p>
+                        
+                        <form @submit="handleSubmit">
+                            <div class="mb-6">
+                                <input 
+                                    type="text" 
+                                    v-model="username" 
+                                    required
+                                    placeholder="사용자 이름 (예: yoho)"
+                                    class="w-full p-4 border-2 border-gray-200 rounded-xl font-sans text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+                                    autofocus
+                                >
+                            </div>
+                            <button 
+                                type="submit"
+                                class="w-full py-4 border-none rounded-xl cursor-pointer text-lg font-bold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-indigo-500 text-white"
+                            >시작하기 🚀</button>
+                        </form>
+                    </div>
+                </div>
+            `
+        };
+
         // 메인 앱
-        createApp({
+        const app = createApp({
             components: {
-                ProjectCard,
-                ProjectModal,
-                StatusMessage,
-                ProjectGroupModal
+                'project-card': ProjectCard,
+                'project-modal': ProjectModal,
+                'status-message': StatusMessage,
+                'project-group-modal': ProjectGroupModal,
+                'login-modal': LoginModal
             },
             setup() {
+                console.log('🚀 setup() function called!');
                 const canvas = ref(null);
                 const fileInput = ref(null);
 
@@ -412,6 +471,10 @@
                 const showProjectGroupModal = ref(false);
                 const editingProjectGroupId = ref(null);
                 const statusMessage = ref(null);
+                const showLoginModal = ref(true);
+
+                // showLoginModal 값 변경 추적
+                console.log('Initial showLoginModal:', showLoginModal.value);
 
                 // API 설정
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
@@ -441,8 +504,21 @@
 
                 // 유틸리티 함수
                 const showMessage = (message, type = 'success') => {
+                    console.log('showMessage called with:', message, type);
                     statusMessage.value = { text: message, type };
                 };
+
+                // 사용자명이 없으면 리턴 (또는 로그인 모달 표시)
+                const checkUsername = (username) => {
+                    console.log('checkUsername', username);
+                    if (!username) {
+                        console.log('username is null');
+                        console.log('Setting showLoginModal to true');
+                        showLoginModal.value = true;
+                        console.log('showLoginModal.value:', showLoginModal.value);
+                        return;
+                    }
+                }
 
                 // 데이터 마이그레이션: 기존 projects 형식을 projectGroups 형식으로 변환
                 const migrateToProjectGroups = (oldProjects) => {
@@ -550,6 +626,7 @@
                     let username = usernameInput.value.trim();
 
                     // 사용자명이 없으면 기본 사용자명 사용
+                    constrainCardPosition
                     if (!username) {
                         username = 'guest';
                         usernameInput.value = username;
@@ -1040,8 +1117,39 @@
                     event.target.value = '';
                 };
 
+                const handleLogin = (username) => {
+                    currentUser.value = username;
+                    usernameInput.value = username;
+                    showLoginModal.value = false;
+
+                    // 로컬 스토리지에 마지막 사용자 저장
+                    localStorage.setItem('opp_last_user', username);
+
+                    loadUserProjects();
+                };
+
                 // 이벤트 리스너
                 onMounted(() => {
+                    console.log('onMounted - showLoginModal:', showLoginModal.value);
+
+                    // 마지막 사용자 확인
+                    const lastUser = localStorage.getItem('opp_last_user');
+                    console.log('lastUser', lastUser);
+
+                    if (lastUser) {
+                        console.log('lastUser exists, hiding modal');
+                        currentUser.value = lastUser;
+                        usernameInput.value = lastUser;
+                        showLoginModal.value = false;
+                        loadUserProjects();
+                    } else {
+                        console.log('lastUser is null');
+                        // 사용자명이 없으면 로그인 모달 표시
+                        console.log('Ensuring showLoginModal is true');
+                        showLoginModal.value = true;
+                        console.log('showLoginModal after setting:', showLoginModal.value);
+                    }
+
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
 
@@ -1106,10 +1214,21 @@
                     resetView,
                     exportToJSON,
                     triggerFileImport,
-                    importFromJSON
+                    importFromJSON,
+                    showLoginModal,
+                    handleLogin,
+                    fitProjectsToView
                 };
             }
-        }).mount('#app');
+        });
+
+        console.log('Registering login-modal component globally...');
+        app.component('login-modal', LoginModal);
+        console.log('login-modal registered');
+
+        console.log('About to mount app...');
+        app.mount('#app');
+        console.log('✅ Vue app mounted successfully!');
     </script>
 </body>
 
