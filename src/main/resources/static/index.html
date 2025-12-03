@@ -270,21 +270,6 @@
                     selectedProject.value = projectId;
                 };
 
-                const focusOnProject = (projectId) => {
-                    if (!projects[projectId]) return;
-                    
-                    const viewportWidth = window.innerWidth - 300;
-                    const viewportHeight = window.innerHeight - 250;
-                    const cardWidth = viewportWidth * 0.95;
-                    const project = projects[projectId];
-                    const descLength = project.desc ? project.desc.length : 0;
-                    const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20);
-                    const scaleY = (viewportHeight * 0.95) / estimatedCardHeight;
-                    
-                    viewportScale.value = Math.max(Math.min(scaleY, 2), 0.4);
-                };
-
-
                 const saveProjectToServer = async (username, projectId, projectData) => {
                     const allProjects = { ...projects, [projectId]: projectData };
                     const response = await fetch(`${API_BASE_URL}/${username}`, {
