@@ -17,22 +17,6 @@
         body:active {
             cursor: grabbing;
         }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .animate-slide-in {
-            animation: slideIn 0.3s ease;
-        }
     </style>
 </head>
 
@@ -103,9 +87,6 @@
         <!-- Modal -->
         <project-modal v-if="isProjectModalOpen" :project="editingProject" :is-editing="!!currentEditingProjectId"
             @close="closeModal" @save="saveProject" @delete="deleteProject(currentEditingProjectId)" />
-
-        <!-- Login Modal -->
-        <login-modal v-if="isLoginModalOpen" @login="handleLogin" />
     </div>
 
     <script>
@@ -242,57 +223,10 @@
             `
         };
 
-        const LoginModal = {
-            name: 'LoginModal',
-            emits: ['login'],
-            setup(props, { emit }) {
-                const username = ref('');
-
-                const handleSubmit = (e) => {
-                    e.preventDefault();
-                    if (username.value.trim()) {
-                        emit('login', username.value.trim());
-                    }
-                };
-
-                return {
-                    username,
-                    handleSubmit
-                };
-            },
-            template: `
-                <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center backdrop-blur-sm" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
-                    <div class="bg-white p-10 rounded-3xl w-[90%] max-w-md shadow-2xl text-center animate-slide-in">
-                        <h1 class="text-4xl font-bold mb-2">📦</h1>
-                        <h2 class="text-indigo-500 mb-6 text-2xl font-bold">One Page Project</h2>
-                        <p class="text-gray-500 mb-8">프로젝트 관리를 시작하려면<br>사용자 이름을 입력하세요.</p>
-                        
-                        <form @submit="handleSubmit">
-                            <div class="mb-6">
-                                <input 
-                                    type="text" 
-                                    v-model="username" 
-                                    required
-                                    placeholder="사용자 이름 (예: yoho)"
-                                    class="w-full p-4 border-2 border-gray-200 rounded-xl font-sans text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
-                                    autofocus
-                                >
-                            </div>
-                            <button 
-                                type="submit"
-                                class="w-full py-4 border-none rounded-xl cursor-pointer text-lg font-bold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-indigo-500 text-white"
-                            >시작하기 🚀</button>
-                        </form>
-                    </div>
-                </div>
-            `
-        };
-
         const app = createApp({
             components: {
                 'project-item': ProjectItem,
-                'project-modal': ProjectModal,
-                'login-modal': LoginModal
+                'project-modal': ProjectModal
             },
             setup() {
                 const canvas = ref(null);
@@ -310,8 +244,6 @@
 
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
-
-                const isLoginModalOpen = ref(true);
 
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
@@ -486,14 +418,6 @@
                     }
                 };
 
-                const handleLogin = (username) => {
-                    currentUser.value = username;
-                    usernameInput.value = username;
-                    isLoginModalOpen.value = false;
-                    localStorage.setItem('opp_last_user', username);
-                    loadUserProjects();
-                };
-
                 const logout = () => {
                     if (confirm('로그아웃 하시겠습니까?')) {
                         localStorage.removeItem('opp_last_user');
@@ -556,10 +480,12 @@
                     if (lastUser) {
                         currentUser.value = lastUser;
                         usernameInput.value = lastUser;
-                        isLoginModalOpen.value = false;
                         loadUserProjects();
                     } else {
-                        isLoginModalOpen.value = true;
+                        const defaultUser = 'guest';
+                        currentUser.value = defaultUser;
+                        usernameInput.value = defaultUser;
+                        loadUserProjects();
                     }
 
                     document.addEventListener('mousemove', handleMouseMove);
@@ -594,8 +520,6 @@
                     saveProject,
                     closeModal,
                     startCanvasDrag,
-                    isLoginModalOpen,
-                    handleLogin,
                     logout,
                     focusOnProject,
                     zoomToFit,
@@ -606,7 +530,6 @@
             }
         });
 
-        app.component('login-modal', LoginModal);
         app.mount('#app');
     </script>
 </body>
