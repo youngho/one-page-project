@@ -10,13 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
-        body {
-            cursor: grab;
-        }
-
-        body:active {
-            cursor: grabbing;
-        }
     </style>
 </head>
 
@@ -74,8 +67,7 @@
 
 
         <!-- Project View -->
-        <div class="w-screen h-screen overflow-hidden relative" @mousedown="startCanvasDrag"
-            :style="{ cursor: isViewportDragging ? 'grabbing' : 'grab' }">
+        <div class="w-screen h-screen overflow-hidden relative">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
                 ref="canvas" :style="canvasStyle">
                 <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
@@ -234,8 +226,6 @@
                 const viewportScale = ref(1);
                 const viewportX = ref(0);
                 const viewportY = ref(0);
-                const isViewportDragging = ref(false);
-                const viewportDragStart = reactive({ x: 0, y: 0 });
 
                 const projects = reactive({});
                 const selectedProject = ref(null);
@@ -259,25 +249,6 @@
                 const totalProjectCount = computed(() => {
                     return Object.keys(projects).length;
                 });
-
-                const startCanvasDrag = (e) => {
-                    if (e.target.closest('.project-item') || e.target.closest('.modal')) return;
-                    isViewportDragging.value = true;
-                    viewportDragStart.x = e.clientX - viewportX.value;
-                    viewportDragStart.y = e.clientY - viewportY.value;
-                    document.body.style.cursor = 'grabbing';
-                };
-
-                const handleMouseMove = (e) => {
-                    if (!isViewportDragging.value) return;
-                    viewportX.value = e.clientX - viewportDragStart.x;
-                    viewportY.value = e.clientY - viewportDragStart.y;
-                };
-
-                const handleMouseUp = () => {
-                    isViewportDragging.value = false;
-                    document.body.style.cursor = 'grab';
-                };
 
                 const handleProjectClick = (projectId) => {
                     selectedProject.value = projectId;
@@ -488,9 +459,6 @@
                         loadUserProjects();
                     }
 
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-
                     if (Object.keys(projects).length > 0 && selectedProject.value) {
                         setTimeout(() => {
                             zoomToFit();
@@ -503,7 +471,6 @@
                     viewportScale,
                     viewportX,
                     viewportY,
-                    isViewportDragging,
                     projects,
                     selectedProject,
                     currentUser,
@@ -519,7 +486,6 @@
                     deleteProject,
                     saveProject,
                     closeModal,
-                    startCanvasDrag,
                     logout,
                     focusOnProject,
                     zoomToFit,
