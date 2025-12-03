@@ -40,7 +40,7 @@
             <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
                 <div class="flex items-center gap-2">
                     <select v-model="selectedProject"
-                        @change="handleProjectClick(selectedProject)"
+                        @change="projectClick(selectedProject)"
                         class="flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
                         <option v-for="(project, projectId) in projects" 
                             :key="projectId"
@@ -51,7 +51,7 @@
                             프로젝트가 없습니다
                         </option>
                     </select>
-                    <button @click="openAddModal"
+                    <button @click="projectAddModal"
                         class="px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all whitespace-nowrap shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                         <span class="text-xs opacity-90 mr-1">({{ totalProjectCount }})</span>+
                     </button>
@@ -98,7 +98,7 @@
                     :key="selectedProject"
                     :project="projects[selectedProject]" 
                     :project-id="selectedProject"
-                    @edit="editProject" 
+                    @edit="projectEditModal" 
                     @delete="deleteProject" />
             </div>
         </div>
@@ -266,7 +266,7 @@
                     return Object.keys(projects).length;
                 });
 
-                const handleProjectClick = (projectId) => {
+                const projectClick = (projectId) => {
                     selectedProject.value = projectId;
                 };
 
@@ -305,14 +305,7 @@
                         Object.assign(projects, loadedProjects);
                         const firstProjectId = Object.keys(loadedProjects)[0];
                         selectedProject.value = firstProjectId;
-                    } else {
-                        projects['p1'] = {
-                            title: '🎨 첫 프로젝트',
-                            desc: '여기에 프로젝트를 추가해보세요!',
-                            tags: ['시작하기']
-                        };
-                        selectedProject.value = 'p1';
-                    }
+                    } 
                 };
 
                 const logout = () => {
@@ -321,7 +314,7 @@
                     }
                 };
 
-                const openAddModal = () => {
+                const projectAddModal = () => {
                     if (!currentUser.value) {
                         return;
                     }
@@ -329,7 +322,7 @@
                     isProjectModalOpen.value = true;
                 };
 
-                const editProject = (id) => {
+                const projectEditModal = (id) => {
                     currentEditingProjectId.value = id;
                     isProjectModalOpen.value = true;
                 };
@@ -380,15 +373,15 @@
                     currentEditingProjectId,
                     editingProject,
                     canvasStyle,
+                    totalProjectCount,
                     loadUserProjects,
-                    openAddModal,
-                    editProject,
+                    projectAddModal,
+                    projectEditModal,
                     deleteProject,
                     saveProject,
                     closeModal,
                     logout,
-                    totalProjectCount,
-                    handleProjectClick
+                    projectClick
                 };
             }
         });
