@@ -9,8 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/asciidoctor.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <style>
-    </style>
 </head>
 
 <body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-indigo-500 to-purple-600 font-sans">
@@ -21,36 +19,38 @@
         </div>
 
         <!-- Project List Sidebar -->
-        <div
-            class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
-
-            <!-- Project List -->
+        <div class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록 <span
-                            class="text-sm font-normal text-gray-500">({{ totalProjectCount }})</span></h2>
+                    <h2 class="text-lg font-bold text-indigo-500">
+                        프로젝트 목록 
+                        <span class="text-sm font-normal text-gray-500">({{ totalProjectCount }})</span>
+                    </h2>
                     <button @click="openAddModal"
                         class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-all"
                         title="새 프로젝트 추가">+</button>
                 </div>
                 <div class="space-y-2">
-                    <div v-for="(project, projectId) in projects" :key="projectId"
+                    <div v-for="(project, projectId) in projects" 
+                        :key="projectId"
                         @click="handleProjectClick(projectId)"
                         class="p-3 rounded-lg cursor-pointer transition-all bg-white border border-gray-200 hover:border-indigo-300 hover:shadow-md">
                         <div class="font-semibold text-sm mb-1">{{ project.title }}</div>
                     </div>
-                    <div v-if="Object.keys(projects).length === 0" class="text-gray-500 text-sm text-center py-4">
+                    <div v-if="Object.keys(projects).length === 0" 
+                        class="text-gray-500 text-sm text-center py-4">
                         프로젝트가 없습니다
                     </div>
                 </div>
             </div>
         </div>
 
-
-
         <!-- User Panel -->
         <div class="fixed bottom-5 left-5 bg-white/90 px-5 py-4 rounded-lg z-[1000] shadow-lg">
-            <input type="text" v-model="usernameInput" placeholder="사용자명 입력" @keyup.enter="loadUserProjects"
+            <input type="text" 
+                v-model="usernameInput" 
+                placeholder="사용자명 입력" 
+                @keyup.enter="loadUserProjects"
                 class="px-3 py-2 border-2 border-indigo-500 rounded-lg mr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button @click="loadUserProjects"
                 class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">로드</button>
@@ -64,26 +64,32 @@
             </span>
         </div>
 
-
-
         <!-- Project View -->
         <div class="w-screen h-screen overflow-hidden relative">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
-                ref="canvas" :style="canvasStyle">
-                <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
-                    :project="projects[selectedProject]" :project-id="selectedProject" :scale="viewportScale"
-                    @edit="editProject" @delete="deleteProject" />
+                ref="canvas" 
+                :style="canvasStyle">
+                <project-item v-if="selectedProject && projects[selectedProject]" 
+                    :key="selectedProject"
+                    :project="projects[selectedProject]" 
+                    :project-id="selectedProject" 
+                    :scale="viewportScale"
+                    @edit="editProject" 
+                    @delete="deleteProject" />
             </div>
         </div>
 
         <!-- Modal -->
-        <project-modal v-if="isProjectModalOpen" :project="editingProject" :is-editing="!!currentEditingProjectId"
-            @close="closeModal" @save="saveProject" @delete="deleteProject(currentEditingProjectId)" />
+        <project-modal v-if="isProjectModalOpen" 
+            :project="editingProject" 
+            :is-editing="!!currentEditingProjectId"
+            @close="closeModal" 
+            @save="saveProject" 
+            @delete="deleteProject(currentEditingProjectId)" />
     </div>
 
     <script>
         const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
-
         const asciidoctor = Asciidoctor();
 
         const ProjectItem = {
@@ -96,32 +102,31 @@
             setup(props, { emit }) {
                 const renderedDesc = computed(() => {
                     if (!props.project.desc) return '';
-                    return asciidoctor.convert(props.project.desc, { safe: 'safe', attributes: { showtitle: false } });
+                    return asciidoctor.convert(props.project.desc, { 
+                        safe: 'safe', 
+                        attributes: { showtitle: false } 
+                    });
                 });
 
-                return {
-                    renderedDesc
-                };
+                return { renderedDesc };
             },
             template: `
-                <div 
-                    class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 select-none group"
-                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '280px' }"
-                >
+                <div class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 select-none group"
+                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '280px' }">
                     <h2 class="text-indigo-500 mb-4 text-2xl font-bold">{{ project.title }}</h2>
                     <div class="text-gray-600 leading-relaxed mb-4 prose prose-sm max-w-none" v-html="renderedDesc"></div>
                     <div>
-                        <span 
-                            v-for="tag in project.tags" 
+                        <span v-for="tag in project.tags" 
                             :key="tag" 
-                            class="inline-block bg-gray-100 px-3 py-1 rounded-2xl text-xs text-indigo-500 mr-1.5 mt-2.5"
-                        >{{ tag }}</span>
+                            class="inline-block bg-gray-100 px-3 py-1 rounded-2xl text-xs text-indigo-500 mr-1.5 mt-2.5">
+                            {{ tag }}
+                        </span>
                     </div>
                     <div class="flex gap-2.5 mt-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                        <button 
-                            @click.stop="$emit('edit', projectId)"
-                            class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        >✏️ 편집</button>
+                        <button @click.stop="$emit('edit', projectId)"
+                            class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+                            ✏️ 편집
+                        </button>
                     </div>
                 </div>
             `
@@ -150,16 +155,11 @@
                     });
                 };
 
-                return {
-                    form,
-                    handleSubmit
-                };
+                return { form, handleSubmit };
             },
             template: `
-                <div 
-                    class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center"
-                    @click.self="$emit('close')"
-                >
+                <div class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center"
+                    @click.self="$emit('close')">
                     <div class="bg-white p-8 rounded-3xl w-[90%] max-w-lg shadow-2xl">
                         <h2 class="text-indigo-500 mb-5 text-2xl font-bold">
                             {{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}
@@ -167,47 +167,41 @@
                         <form @submit="handleSubmit">
                             <div class="mb-4">
                                 <label class="block mb-1.5 text-gray-600 font-bold">제목 (이모지 포함)</label>
-                                <input 
-                                    type="text" 
+                                <input type="text" 
                                     v-model="form.title" 
                                     required
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div class="mb-4">
                                 <label class="block mb-1.5 text-gray-600 font-bold">설명</label>
-                                <textarea 
-                                    v-model="form.desc" 
+                                <textarea v-model="form.desc" 
                                     required
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm resize-y min-h-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                ></textarea>
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm resize-y min-h-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                             </div>
                             <div class="mb-4">
                                 <label class="block mb-1.5 text-gray-600 font-bold">태그 (쉼표로 구분)</label>
-                                <input 
-                                    type="text" 
+                                <input type="text" 
                                     v-model="form.tags" 
                                     placeholder="React, Node.js, MongoDB"
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
+                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div class="flex gap-2.5 mt-5">
-                                <button 
-                                    type="submit"
-                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-indigo-500 text-white"
-                                >저장</button>
-                                <button 
-                                    type="button" 
+                                <button type="submit"
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-indigo-500 text-white">
+                                    저장
+                                </button>
+                                <button type="button" 
                                     @click="$emit('close')"
-                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-200 text-gray-600"
-                                >취소</button>
+                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-200 text-gray-600">
+                                    취소
+                                </button>
                             </div>
                             <div v-if="isEditing" class="mt-3">
-                                <button 
-                                    type="button"
+                                <button type="button"
                                     @click="$emit('delete')"
-                                    class="w-full py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-red-100 text-red-500 hover:bg-red-200"
-                                >🗑️ 프로젝트 삭제</button>
+                                    class="w-full py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-red-100 text-red-500 hover:bg-red-200">
+                                    🗑️ 프로젝트 삭제
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -222,19 +216,15 @@
             },
             setup() {
                 const canvas = ref(null);
-
                 const viewportScale = ref(1);
                 const viewportX = ref(0);
                 const viewportY = ref(0);
-
                 const projects = reactive({});
                 const selectedProject = ref(null);
                 const currentUser = ref('');
                 const usernameInput = ref('');
-
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
-
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
                 const canvasStyle = computed(() => ({
@@ -264,15 +254,13 @@
                     const project = projects[projectId];
                     const descLength = project.desc ? project.desc.length : 0;
                     const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20);
-                    
                     const viewportWidth = window.innerWidth - 300;
                     const viewportHeight = window.innerHeight - 250;
-                    
                     const scaleX = (viewportWidth * 0.9) / cardWidth;
                     const scaleY = (viewportHeight * 0.9) / estimatedCardHeight;
                     const optimalScale = Math.min(scaleX, scaleY, 2);
-                    viewportScale.value = Math.max(optimalScale, 0.4);
                     
+                    viewportScale.value = Math.max(optimalScale, 0.4);
                     viewportX.value = 0;
                     viewportY.value = 0;
                 };
@@ -366,6 +354,7 @@
                     }
                     currentUser.value = username;
                     const loadedProjects = await loadFromServer(username);
+                    
                     if (loadedProjects && Object.keys(loadedProjects).length > 0) {
                         for (const key in projects) {
                             delete projects[key];
@@ -425,9 +414,7 @@
                         Object.assign(projects[currentEditingProjectId.value], projectData);
                     } else {
                         const newId = 'p' + Date.now();
-                        projects[newId] = {
-                            ...projectData
-                        };
+                        projects[newId] = { ...projectData };
                     }
                     closeModal();
                 };
