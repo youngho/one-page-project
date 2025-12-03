@@ -66,6 +66,21 @@
                         프로젝트가 없습니다
                     </div>
                 </div>
+
+                <!-- Test Buttons for StatusMessage -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <div class="text-xs text-gray-500 mb-2">메시지 테스트:</div>
+                    <div class="flex gap-2">
+                        <button @click="showMessage('성공 메시지 테스트!', 'success')"
+                            class="flex-1 px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600">
+                            ✓ Success
+                        </button>
+                        <button @click="showMessage('에러 메시지 테스트!', 'error')"
+                            class="flex-1 px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
+                            ✗ Error
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -79,13 +94,6 @@
                 class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">로드</button>
             <button @click="saveAllProjects"
                 class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">저장</button>
-            <button @click="exportToJSON"
-                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">📥
-                내보내기</button>
-            <button @click="triggerFileImport"
-                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">📤
-                가져오기</button>
-            <input type="file" ref="fileInput" accept=".json" class="hidden" @change="importFromJSON">
             <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold flex items-center gap-2">
                 👤 {{ currentUser }}
                 <button @click="logout"
@@ -507,77 +515,7 @@
                     }
                 };
 
-                const exportToJSON = () => {
-                    const username = currentUser.value || 'guest';
-                    if (!currentUser.value) {
-                        currentUser.value = username;
-                        usernameInput.value = username;
-                    }
-                    const exportData = {
-                        username: username,
-                        exportDate: new Date().toISOString(),
-                        version: '2.0',
-                        projects: projects // Exporting flat projects
-                    };
-                    const jsonString = JSON.stringify(exportData, null, 2);
-                    const blob = new Blob([jsonString], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `OPP_${username}_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    showMessage('프로젝트를 JSON 파일로 내보냈습니다!');
-                };
-
-                const triggerFileImport = () => {
-                    fileInput.value?.click();
-                };
-
-                const importFromJSON = (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        try {
-                            const importData = JSON.parse(e.target.result);
-                            let projectsToImport = {};
-
-                            if (importData.projects) { // New flat format
-                                projectsToImport = importData.projects;
-                            } else if (importData.projectGroups) { // Old grouped format
-                                projectsToImport = migrateToFlatProjects(importData.projectGroups);
-                            } else {
-                                throw new Error('올바른 OPP JSON 파일이 아닙니다.');
-                            }
-
-                            if (importData.username) {
-                                currentUser.value = importData.username;
-                                usernameInput.value = importData.username;
-                            }
-                            // Clear existing projects and assign new ones
-                            for (const key in projects) {
-                                delete projects[key];
-                            }
-                            Object.assign(projects, projectsToImport);
-
-                            const firstProjectId = Object.keys(projectsToImport)[0];
-                            if (firstProjectId) selectedProject.value = firstProjectId;
-
-                            showMessage(`프로젝트를 가져왔습니다! (${Object.keys(projectsToImport).length}개 카드)`);
-                            nextTick(() => {
-                                fitProjectsToView(1);
-                            });
-                        } catch (error) {
-                            console.error('가져오기 오류:', error);
-                            showMessage('JSON 파일을 읽을 수 없습니다. 파일을 확인해주세요.', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-                    event.target.value = '';
-                };
+                // Export/Import functions removed as per user request
 
                 // 5. User Management
                 const loadUserProjects = async () => {
@@ -711,7 +649,6 @@
 
                 return {
                     canvas,
-                    fileInput,
                     viewportScale,
                     viewportX,
                     viewportY,
@@ -732,11 +669,9 @@
                     deleteProject,
                     saveProject,
                     closeModal,
+                    showMessage,
                     // zoomIn, zoomOut removed
                     startCanvasDrag,
-                    exportToJSON,
-                    triggerFileImport,
-                    importFromJSON,
                     isLoginModalOpen,
                     handleLogin,
                     logout,
