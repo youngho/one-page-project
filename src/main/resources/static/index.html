@@ -69,10 +69,7 @@
             </div>
         </div>
 
-        <!-- Zoom Indicator -->
-        <div class="fixed top-5 right-5 bg-white/90 px-5 py-4 rounded-lg font-bold text-indigo-500 z-[1000] shadow-lg">
-            Zoom: {{ Math.round(viewportScale * 100) }}%
-        </div>
+
 
         <!-- User Panel -->
         <div class="fixed bottom-5 left-5 bg-white/90 px-5 py-4 rounded-lg z-[1000] shadow-lg">
@@ -97,27 +94,16 @@
             </span>
         </div>
 
-        <!-- Controls -->
-        <div class="fixed bottom-5 right-5 flex gap-2.5 z-[1000]">
-            <button @click="resetView"
-                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110">⌂</button>
-            <button @click="zoomIn"
-                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110">+</button>
-            <button @click="fitProjectsToView"
-                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110"
-                title="전체 보기">⛶</button>
-            <button @click="zoomOut"
-                class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110">−</button>
-        </div>
+
 
         <!-- Project View -->
-        <div class="w-screen h-screen overflow-hidden relative" @wheel.prevent="handleWheel"
-            @mousedown="startCanvasDrag" :style="{ cursor: isViewportDragging ? 'grabbing' : 'grab' }">
+        <div class="w-screen h-screen overflow-hidden relative" @mousedown="startCanvasDrag"
+            :style="{ cursor: isViewportDragging ? 'grabbing' : 'grab' }">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
                 ref="canvas" :style="canvasStyle">
                 <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
                     :project="projects[selectedProject]" :project-id="selectedProject" :scale="viewportScale"
-                    @edit="editProject" @delete="deleteProject" @update-position="updateProjectPosition" />
+                    @edit="editProject" @delete="deleteProject" />
             </div>
         </div>
 
@@ -152,58 +138,23 @@
                 projectId: String,
                 scale: Number
             },
-            emits: ['edit', 'delete', 'update-position'],
+            emits: ['edit', 'delete'],
             setup(props, { emit }) {
-                const isDragging = ref(false);
-                const dragStart = reactive({ x: 0, y: 0, originalX: 0, originalY: 0 });
+                // Drag logic removed as per user request
 
                 const renderedDesc = computed(() => {
                     if (!props.project.desc) return '';
                     return asciidoctor.convert(props.project.desc, { safe: 'safe', attributes: { showtitle: false } });
                 });
 
-                const startDrag = (e) => {
-                    if (e.target.closest('button') || e.target.closest('a')) return;
-                    e.stopPropagation();
-
-                    isDragging.value = true;
-                    dragStart.x = e.clientX;
-                    dragStart.y = e.clientY;
-                    dragStart.originalX = props.project.x;
-                    dragStart.originalY = props.project.y;
-
-                    const moveProject = (e) => {
-                        if (!isDragging.value) return;
-                        const dx = (e.clientX - dragStart.x) / props.scale;
-                        const dy = (e.clientY - dragStart.y) / props.scale;
-                        emit('update-position', props.projectId, {
-                            x: dragStart.originalX + dx,
-                            y: dragStart.originalY + dy
-                        });
-                    };
-
-                    const stopMoveProject = () => {
-                        isDragging.value = false;
-                        document.removeEventListener('mousemove', moveProject);
-                        document.removeEventListener('mouseup', stopMoveProject);
-                    };
-
-                    document.addEventListener('mousemove', moveProject);
-                    document.addEventListener('mouseup', stopMoveProject);
-                };
-
                 return {
-                    isDragging,
-                    startDrag,
                     renderedDesc
                 };
             },
             template: `
                 <div 
-                    class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 cursor-move select-none group"
-                    :class="{ 'opacity-80 z-[1000]': isDragging }"
-                    :style="{ left: project.x + 'px', top: project.y + 'px', width: '280px' }"
-                    @mousedown="startDrag"
+                    class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 select-none group"
+                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '280px' }"
                 >
                     <h2 class="text-indigo-500 mb-4 text-2xl font-bold">{{ project.title }}</h2>
                     <div class="text-gray-600 leading-relaxed mb-4 prose prose-sm max-w-none" v-html="renderedDesc"></div>
@@ -439,26 +390,7 @@
                 });
 
                 // 3. Viewport Management
-                const handleWheel = (e) => {
-                    e.preventDefault();
-                    const delta = e.deltaY;
-                    const zoomIntensity = 0.1;
-
-                    if (delta < 0) {
-                        viewportScale.value *= (1 + zoomIntensity);
-                    } else {
-                        viewportScale.value *= (1 - zoomIntensity);
-                    }
-                    viewportScale.value = Math.min(Math.max(0.3, viewportScale.value), 3);
-                };
-
-                const zoomIn = () => {
-                    viewportScale.value = Math.min(viewportScale.value * 1.2, 3);
-                };
-
-                const zoomOut = () => {
-                    viewportScale.value = Math.max(viewportScale.value * 0.8, 0.3);
-                };
+                // Zoom functions removed as per user request
 
                 const startCanvasDrag = (e) => {
                     if (e.target.closest('.project-item') || e.target.closest('.modal')) return;
@@ -479,110 +411,7 @@
                     document.body.style.cursor = 'grab';
                 };
 
-                const resetView = () => {
-                    if (Object.keys(projects).length > 0) {
-                        setTimeout(() => {
-                            fitProjectsToView(1);
-                        }, 50);
-                    } else {
-                        viewportScale.value = 1;
-                        viewportX.value = 0;
-                        viewportY.value = 0;
-                    }
-                };
-
-                const constrainProjectPosition = (x, y) => {
-                    const projectWidth = 280;
-                    const projectHeight = 200;
-                    const padding = 100;
-                    const centerX = window.innerWidth;
-                    const centerY = window.innerHeight;
-                    const minX = centerX - window.innerWidth / 2 + padding;
-                    const maxX = centerX + window.innerWidth / 2 - projectWidth - padding;
-                    const minY = centerY - window.innerHeight / 2 + padding;
-                    const maxY = centerY + window.innerHeight / 2 - projectHeight - padding;
-                    return {
-                        x: Math.max(minX, Math.min(maxX, x)),
-                        y: Math.max(minY, Math.min(maxY, y))
-                    };
-                };
-
-                const ensureProjectsInView = (skipFitView = false) => {
-                    if (Object.keys(projects).length === 0) return false;
-
-                    let needsUpdate = false;
-                    Object.keys(projects).forEach(id => {
-                        const project = projects[id];
-                        const constrained = constrainProjectPosition(project.x, project.y);
-                        if (project.x !== constrained.x || project.y !== constrained.y) {
-                            project.x = constrained.x;
-                            project.y = constrained.y;
-                            needsUpdate = true;
-                        }
-                    });
-
-                    if (needsUpdate && !skipFitView) {
-                        nextTick(() => {
-                            fitProjectsToView();
-                        });
-                    }
-                    return needsUpdate;
-                };
-
-                const fitProjectsToView = (targetScale = null) => {
-                    const projectKeys = Object.keys(projects);
-                    if (projectKeys.length === 0) {
-                        viewportScale.value = 1;
-                        viewportX.value = 0;
-                        viewportY.value = 0;
-                        return;
-                    }
-                    ensureProjectsInView(true);
-
-                    let minX = Infinity, minY = Infinity;
-                    let maxX = -Infinity, maxY = -Infinity;
-
-                    Object.values(projects).forEach(project => {
-                        if (project && typeof project.x === 'number' && typeof project.y === 'number') {
-                            minX = Math.min(minX, project.x);
-                            minY = Math.min(minY, project.y);
-                            maxX = Math.max(maxX, project.x + 280);
-                            maxY = Math.max(maxY, project.y + 200);
-                        }
-                    });
-
-                    if (minX === Infinity || minY === Infinity) {
-                        viewportScale.value = 1;
-                        viewportX.value = 0;
-                        viewportY.value = 0;
-                        return;
-                    }
-
-                    if (targetScale !== null) {
-                        viewportScale.value = targetScale;
-                    } else {
-                        const projectsWidth = maxX - minX;
-                        const projectsHeight = maxY - minY;
-                        const viewportWidth = window.innerWidth - 300;
-                        const viewportHeight = window.innerHeight - 250;
-                        let calculatedScale = 1;
-                        if (projectsWidth > 0 && projectsHeight > 0) {
-                            const scaleX = (viewportWidth * 0.85) / projectsWidth;
-                            const scaleY = (viewportHeight * 0.85) / projectsHeight;
-                            calculatedScale = Math.min(scaleX, scaleY, 2);
-                            calculatedScale = Math.max(calculatedScale, 0.3);
-                        }
-                        viewportScale.value = calculatedScale;
-                    }
-
-                    const centerX = (minX + maxX) / 2;
-                    const centerY = (minY + maxY) / 2;
-                    const viewportCenterX = window.innerWidth;
-                    const viewportCenterY = window.innerHeight;
-
-                    viewportX.value = viewportCenterX - (centerX * viewportScale.value);
-                    viewportY.value = viewportCenterY - (centerY * viewportScale.value);
-                };
+                // Position constraints and view fitting removed as per user request
 
                 const handleProjectClick = (projectId) => {
                     selectedProject.value = projectId;
@@ -593,19 +422,10 @@
 
                 const focusOnProject = (projectId) => {
                     if (projects[projectId]) {
-                        const project = projects[projectId];
-                        const targetScale = 1.5;
-                        viewportScale.value = targetScale;
-
-                        // Project dimensions (approx)
-                        const projectWidth = 280;
-                        const projectHeight = 200;
-
-                        const projectCenterX = project.x + projectWidth / 2;
-                        const projectCenterY = project.y + projectHeight / 2;
-
-                        viewportX.value = window.innerWidth - (projectCenterX * targetScale);
-                        viewportY.value = window.innerHeight - (projectCenterY * targetScale);
+                        // Simply reset viewport to center
+                        viewportScale.value = 1.5;
+                        viewportX.value = 0;
+                        viewportY.value = 0;
                     }
                 };
 
@@ -777,21 +597,15 @@
                         Object.assign(projects, loadedProjects);
                         showMessage('프로젝트를 불러왔습니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     } else {
-                        const centerX = window.innerWidth;
-                        const centerY = window.innerHeight;
-                        const projectX = centerX - 140;
-                        const projectY = centerY - 100;
                         projects['p1'] = {
                             title: '🎨 첫 프로젝트',
                             desc: '여기에 프로젝트를 추가해보세요!',
-                            tags: ['시작하기'],
-                            x: projectX,
-                            y: projectY
+                            tags: ['시작하기']
                         };
                         showMessage('새로운 사용자입니다. 환영합니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     }
                     setTimeout(() => {
-                        fitProjectsToView(1);
+                        // fitProjectsToView removed
                     }, 100);
                 };
 
@@ -833,7 +647,7 @@
                         showMessage('프로젝트가 삭제되었습니다!');
                         closeModal();
                         setTimeout(() => {
-                            fitProjectsToView(1);
+                            // fitProjectsToView removed
                         }, 100);
                     }
                 };
@@ -844,31 +658,14 @@
                         showMessage('프로젝트가 수정되었습니다!');
                     } else {
                         const newId = 'p' + Date.now();
-                        const centerX = window.innerWidth;
-                        const centerY = window.innerHeight;
-                        const existingProjects = Object.values(projects);
-                        let projectX = centerX - 140;
-                        let projectY = centerY - 100;
-                        if (existingProjects.length > 0) {
-                            const lastProject = existingProjects[existingProjects.length - 1];
-                            projectX = lastProject.x + 320;
-                            projectY = lastProject.y;
-                            if (projectX > centerX + window.innerWidth / 2 - 280) {
-                                projectX = centerX - window.innerWidth / 2 + 100;
-                                projectY = lastProject.y + 250;
-                            }
-                        }
-                        const constrained = constrainProjectPosition(projectX, projectY);
                         projects[newId] = {
-                            ...projectData,
-                            x: constrained.x,
-                            y: constrained.y
+                            ...projectData
                         };
                         showMessage('프로젝트가 추가되었습니다!');
                     }
                     closeModal();
                     setTimeout(() => {
-                        fitProjectsToView(1);
+                        // fitProjectsToView removed
                     }, 100);
                 };
 
@@ -877,13 +674,7 @@
                     currentEditingProjectId.value = null;
                 };
 
-                const updateProjectPosition = (id, position) => {
-                    if (projects[id]) {
-                        const constrained = constrainProjectPosition(position.x, position.y);
-                        projects[id].x = constrained.x;
-                        projects[id].y = constrained.y;
-                    }
-                };
+                // updateProjectPosition removed
 
                 const saveAllProjects = async () => {
                     const username = currentUser.value || 'guest';
@@ -911,20 +702,9 @@
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
 
-                    let resizeTimeout;
-                    window.addEventListener('resize', () => {
-                        clearTimeout(resizeTimeout);
-                        resizeTimeout = setTimeout(() => {
-                            if (Object.keys(projects).length > 0) {
-                                ensureProjectsInView(true);
-                                fitProjectsToView();
-                            }
-                        }, 300);
-                    });
-
                     if (Object.keys(projects).length > 0) {
                         setTimeout(() => {
-                            fitProjectsToView(1);
+                            // fitProjectsToView removed
                         }, 200);
                     }
                 });
@@ -952,19 +732,15 @@
                     deleteProject,
                     saveProject,
                     closeModal,
-                    updateProjectPosition,
-                    handleWheel,
-                    zoomIn,
-                    zoomOut,
+                    // zoomIn, zoomOut removed
                     startCanvasDrag,
-                    resetView,
                     exportToJSON,
                     triggerFileImport,
                     importFromJSON,
                     isLoginModalOpen,
                     handleLogin,
                     logout,
-                    fitProjectsToView,
+                    // fitProjectsToView removed
                     focusOnProject,
                     totalProjectCount,
                     handleProjectClick
