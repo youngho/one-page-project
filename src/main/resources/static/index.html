@@ -40,8 +40,8 @@
     <div id="app">
         <!-- Title -->
         <div class="fixed top-5 left-5 text-white z-[1000] drop-shadow-lg">
-            <h1 class="text-3xl font-bold mb-1">📦 {{ selectedProjectGroup && projectGroups[selectedProjectGroup] ?
-                projectGroups[selectedProjectGroup].name : 'My Projects' }}</h1>
+            <h1 class="text-3xl font-bold mb-1">📦 {{ selectedProject && projectGroups[selectedProject] ?
+                projectGroups[selectedProject].name : 'My Projects' }}</h1>
         </div>
 
         <!-- Project List Sidebar -->
@@ -49,7 +49,7 @@
             class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
 
             <!-- Group List View -->
-            <div v-if="!selectedProjectGroup">
+            <div>
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록 <span
                             class="text-sm font-normal text-gray-500">({{ totalProjectCount }})</span></h2>
@@ -58,7 +58,7 @@
                         title="새 프로젝트 그룹 추가">+</button>
                 </div>
                 <div class="space-y-2">
-                    <div v-for="(group, groupId) in projectGroups" :key="groupId" @click="selectProjectGroup(groupId)"
+                    <div v-for="(group, groupId) in projectGroups" :key="groupId"
                         class="p-3 rounded-lg cursor-pointer transition-all bg-gray-100 hover:bg-gray-200">
                         <div class="flex flex-col gap-2">
                             <div class="flex items-center justify-between">
@@ -67,7 +67,7 @@
                             <!-- Project List inside Group -->
                             <div class="pl-2 space-y-1">
                                 <div v-for="(card, cardId) in group.cards" :key="cardId"
-                                    @click.stop="selectProjectGroup(groupId); setTimeout(() => focusOnCard(cardId), 100)"
+                                    @click.stop="selectProject(cardId); setTimeout(() => focusOnCard(cardId), 100)"
                                     class="text-sm text-gray-600 hover:text-indigo-500 hover:bg-white/50 p-1 rounded transition-colors flex items-center gap-1">
                                     <span class="text-xs">📄</span> {{ card.title }}
                                 </div>
@@ -90,34 +90,6 @@
                 </div>
             </div>
 
-            <!-- Selected Group Detail View -->
-            <div v-else>
-                <div class="flex items-center justify-between mb-3">
-                    <button @click="selectedProjectGroup = null"
-                        class="text-sm text-gray-500 hover:text-indigo-500 flex items-center gap-1">
-                        ← 목록으로
-                    </button>
-                    <button @click="openAddModal"
-                        class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-all"
-                        title="새 프로젝트 추가">+ 카드</button>
-                </div>
-                <h2 class="text-lg font-bold text-indigo-500 mb-4 border-b pb-2">
-                    {{ projectGroups[selectedProjectGroup].name }}
-                </h2>
-
-                <div class="space-y-2">
-                    <div v-for="(card, cardId) in projectGroups[selectedProjectGroup].cards" :key="cardId"
-                        @click="focusOnCard(cardId)"
-                        class="p-3 rounded-lg cursor-pointer transition-all bg-white border border-gray-200 hover:border-indigo-300 hover:shadow-md">
-                        <div class="font-semibold text-sm mb-1">{{ card.title }}</div>
-                        <div class="text-xs text-gray-500 truncate">{{ card.desc }}</div>
-                    </div>
-                    <div v-if="Object.keys(projectGroups[selectedProjectGroup].cards || {}).length === 0"
-                        class="text-gray-500 text-sm text-center py-4">
-                        카드가 없습니다
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Zoom Indicator -->
@@ -525,7 +497,7 @@
                 const viewportDragStart = reactive({ x: 0, y: 0 });
 
                 const projectGroups = reactive({});
-                const selectedProjectGroup = ref(null);
+                const selectedProject = ref(null);
                 const currentUser = ref('');
                 const usernameInput = ref('');
 
@@ -547,16 +519,16 @@
                 }));
 
                 const editingProject = computed(() => {
-                    if (!currentEditingProjectId.value || !selectedProjectGroup.value) return null;
-                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!currentEditingProjectId.value || !selectedProject.value) return null;
+                    const group = projectGroups[selectedProject.value];
                     return group?.cards?.[currentEditingProjectId.value] || null;
                 });
 
                 const currentProjects = computed(() => {
-                    if (!selectedProjectGroup.value || !projectGroups[selectedProjectGroup.value]) {
+                    if (!selectedProject.value || !projectGroups[selectedProject.value]) {
                         return {};
                     }
-                    return projectGroups[selectedProjectGroup.value].cards || {};
+                    return projectGroups[selectedProject.value].cards || {};
                 });
 
                 const editingProjectGroup = computed(() => {
@@ -639,8 +611,8 @@
                 };
 
                 const ensureCardsInView = (skipFitView = false) => {
-                    if (!selectedProjectGroup.value) return false;
-                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!selectedProject.value) return false;
+                    const group = projectGroups[selectedProject.value];
                     if (!group || !group.cards) return false;
 
                     let needsUpdate = false;
@@ -718,8 +690,8 @@
                 };
 
                 const focusOnCard = (cardId) => {
-                    if (!selectedProjectGroup.value) return;
-                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!selectedProject.value) return;
+                    const group = projectGroups[selectedProject.value];
                     if (group && group.cards && group.cards[cardId]) {
                         const card = group.cards[cardId];
                         const targetScale = 1.5;
@@ -865,7 +837,7 @@
                             }
                             Object.assign(projectGroups, groupsToImport);
                             const firstGroupId = Object.keys(groupsToImport)[0];
-                            if (firstGroupId) selectedProjectGroup.value = firstGroupId;
+                            if (firstGroupId) selectedProject.value = firstGroupId;
                             const totalCards = Object.values(groupsToImport).reduce((sum, group) => sum + Object.keys(group.cards || {}).length, 0);
                             showMessage(`프로젝트를 가져왔습니다! (${Object.keys(groupsToImport).length}개 그룹, ${totalCards}개 카드)`);
                             nextTick(() => {
@@ -893,7 +865,7 @@
                     if (loadedGroups && Object.keys(loadedGroups).length > 0) {
                         Object.assign(projectGroups, loadedGroups);
                         // 자동 선택 로직 제거
-                        selectedProjectGroup.value = null;
+                        selectedProject.value = null;
                         showMessage('프로젝트를 불러왔습니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     } else {
                         const defaultGroupId = 'group_' + Date.now();
@@ -914,7 +886,7 @@
                             }
                         };
                         // 새 사용자도 자동 선택 안함
-                        selectedProjectGroup.value = null;
+                        selectedProject.value = null;
                         showMessage('새로운 사용자입니다. 환영합니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     }
                     setTimeout(() => {
@@ -963,9 +935,9 @@
                 };
 
                 const deleteProject = (id) => {
-                    if (!selectedProjectGroup.value) return;
+                    if (!selectedProject.value) return;
                     if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
-                        const group = projectGroups[selectedProjectGroup.value];
+                        const group = projectGroups[selectedProject.value];
                         if (group && group.cards) {
                             delete group.cards[id];
                         }
@@ -978,8 +950,8 @@
                 };
 
                 const saveProject = (projectData) => {
-                    if (!selectedProjectGroup.value) return;
-                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!selectedProject.value) return;
+                    const group = projectGroups[selectedProject.value];
                     if (!group.cards) group.cards = {};
 
                     if (currentEditingProjectId.value) {
@@ -1021,8 +993,8 @@
                 };
 
                 const updateProjectPosition = (id, position) => {
-                    if (!selectedProjectGroup.value) return;
-                    const group = projectGroups[selectedProjectGroup.value];
+                    if (!selectedProject.value) return;
+                    const group = projectGroups[selectedProject.value];
                     if (group && group.cards && group.cards[id]) {
                         const constrained = constrainCardPosition(position.x, position.y);
                         group.cards[id].x = constrained.x;
@@ -1039,9 +1011,8 @@
                     await saveToServer(username, projectGroups);
                 };
 
-                // 7. Group Management
-                const selectProjectGroup = (groupId) => {
-                    selectedProjectGroup.value = groupId;
+                const selectProject = (projectId) => {
+                    selectedProject.value = projectId;
                     setTimeout(() => {
                         fitProjectsToView(1);
                     }, 100);
@@ -1060,9 +1031,9 @@
                 const deleteProjectGroup = (groupId) => {
                     if (confirm('이 프로젝트 그룹을 삭제하시겠습니까? 모든 카드가 삭제됩니다.')) {
                         delete projectGroups[groupId];
-                        if (selectedProjectGroup.value === groupId) {
+                        if (selectedProject.value === groupId) {
                             const remainingGroups = Object.keys(projectGroups);
-                            selectedProjectGroup.value = remainingGroups.length > 0 ? remainingGroups[0] : null;
+                            selectedProject.value = remainingGroups.length > 0 ? remainingGroups[0] : null;
                         }
                         showMessage('프로젝트 그룹이 삭제되었습니다!');
                     }
@@ -1078,7 +1049,7 @@
                             name: groupData.name,
                             cards: {}
                         };
-                        selectedProjectGroup.value = newGroupId;
+                        selectedProject.value = newGroupId;
                         showMessage('프로젝트 그룹이 추가되었습니다!');
                     }
                     closeProjectGroupModal();
@@ -1130,7 +1101,7 @@
                     viewportY,
                     isViewportDragging,
                     projectGroups,
-                    selectedProjectGroup,
+                    selectedProject,
                     currentProjects,
                     currentUser,
                     usernameInput,
@@ -1150,7 +1121,7 @@
                     saveProject,
                     closeModal,
                     updateProjectPosition,
-                    selectProjectGroup,
+                    selectProject,
                     openAddProjectGroupModal,
                     editProjectGroup,
                     deleteProjectGroup,
