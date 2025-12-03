@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/asciidoctor.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
         body {
             cursor: grab;
@@ -66,21 +66,6 @@
                         프로젝트가 없습니다
                     </div>
                 </div>
-
-                <!-- Test Buttons for StatusMessage -->
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <div class="text-xs text-gray-500 mb-2">메시지 테스트:</div>
-                    <div class="flex gap-2">
-                        <button @click="showMessage('성공 메시지 테스트!', 'success')"
-                            class="flex-1 px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600">
-                            ✓ Success
-                        </button>
-                        <button @click="showMessage('에러 메시지 테스트!', 'error')"
-                            class="flex-1 px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">
-                            ✗ Error
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -119,27 +104,15 @@
         <project-modal v-if="isProjectModalOpen" :project="editingProject" :is-editing="!!currentEditingProjectId"
             @close="closeModal" @save="saveProject" @delete="deleteProject(currentEditingProjectId)" />
 
-        <!-- Status Message -->
-        <status-message v-if="statusMessage" :message="statusMessage.text" :type="statusMessage.type"
-            @close="statusMessage = null" />
-
         <!-- Login Modal -->
         <login-modal v-if="isLoginModalOpen" @login="handleLogin" />
     </div>
 
     <script>
-        if (typeof Vue === 'undefined') {
-            console.error('❌ Vue is not loaded! Check CDN connection.');
-        } else {
-            console.log('✅ Vue is loaded successfully');
-        }
-
         const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
-        // Initialize Asciidoctor
         const asciidoctor = Asciidoctor();
 
-        // ProjectItem 컴포넌트
         const ProjectItem = {
             props: {
                 project: Object,
@@ -148,8 +121,6 @@
             },
             emits: ['edit', 'delete'],
             setup(props, { emit }) {
-                // Drag logic removed as per user request
-
                 const renderedDesc = computed(() => {
                     if (!props.project.desc) return '';
                     return asciidoctor.convert(props.project.desc, { safe: 'safe', attributes: { showtitle: false } });
@@ -183,7 +154,6 @@
             `
         };
 
-        // ProjectModal 컴포넌트
         const ProjectModal = {
             props: {
                 project: Object,
@@ -272,37 +242,10 @@
             `
         };
 
-        // StatusMessage 컴포넌트
-        const StatusMessage = {
-            props: {
-                message: String,
-                type: String
-            },
-            emits: ['close'],
-            setup(props, { emit }) {
-                setTimeout(() => {
-                    emit('close');
-                }, 3000);
-            },
-            template: `
-                <div 
-                    class="fixed top-20 right-5 px-5 py-4 rounded-lg shadow-lg animate-slide-in text-white font-semibold"
-                    :class="type === 'success' ? 'bg-green-500' : 'bg-red-500'"
-                    style="z-index: 9999; pointer-events: auto;"
-                >
-                    {{ message }}
-                </div>
-            `
-        };
-
-        // ProjectGroupModal 컴포넌트 (Removed as per instruction)
-
-        // LoginModal 컴포넌트
         const LoginModal = {
             name: 'LoginModal',
             emits: ['login'],
             setup(props, { emit }) {
-                console.log('LoginModal setup() called!');
                 const username = ref('');
 
                 const handleSubmit = (e) => {
@@ -311,11 +254,6 @@
                         emit('login', username.value.trim());
                     }
                 };
-
-                // 컴포넌트가 마운트되었는지 확인
-                onMounted(() => {
-                    console.log('🎉 LoginModal mounted!');
-                });
 
                 return {
                     username,
@@ -350,41 +288,33 @@
             `
         };
 
-        // 메인 앱
         const app = createApp({
             components: {
                 'project-item': ProjectItem,
                 'project-modal': ProjectModal,
-                'status-message': StatusMessage,
                 'login-modal': LoginModal
             },
             setup() {
-                console.log('🚀 setup() function called!');
                 const canvas = ref(null);
-                const fileInput = ref(null);
 
-                // 1. State
                 const viewportScale = ref(1);
                 const viewportX = ref(0);
                 const viewportY = ref(0);
                 const isViewportDragging = ref(false);
                 const viewportDragStart = reactive({ x: 0, y: 0 });
 
-                const projects = reactive({}); // Now holds all projects directly
-                const selectedProject = ref(null); // Now tracks the selected project ID
+                const projects = reactive({});
+                const selectedProject = ref(null);
                 const currentUser = ref('');
                 const usernameInput = ref('');
 
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
 
-                const statusMessage = ref(null);
                 const isLoginModalOpen = ref(true);
 
-                // API Config
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
-                // 2. Computed Properties
                 const canvasStyle = computed(() => ({
                     transform: `translate(${viewportX.value}px, ${viewportY.value}px) translate(-50%, -50%) scale(${viewportScale.value})`
                 }));
@@ -397,9 +327,6 @@
                 const totalProjectCount = computed(() => {
                     return Object.keys(projects).length;
                 });
-
-                // 3. Viewport Management
-                // Zoom functions removed as per user request
 
                 const startCanvasDrag = (e) => {
                     if (e.target.closest('.project-item') || e.target.closest('.modal')) return;
@@ -420,8 +347,6 @@
                     document.body.style.cursor = 'grab';
                 };
 
-                // Position constraints and view fitting removed as per user request
-
                 const handleProjectClick = (projectId) => {
                     selectedProject.value = projectId;
                     setTimeout(() => {
@@ -432,29 +357,19 @@
                 const focusOnProject = (projectId) => {
                     if (!projects[projectId]) return;
                     
-                    // 프로젝트 아이템은 항상 canvas 중심(50%, 50%)에 위치
-                    // canvas는 200% 크기이므로 중심은 (window.innerWidth, window.innerHeight)
-                    // 프로젝트 아이템의 실제 크기 (카드 너비 280px + 패딩 등 고려)
                     const cardWidth = 280;
-                    // 프로젝트 설명 내용에 따라 높이가 가변적이므로 충분한 높이 고려
                     const project = projects[projectId];
                     const descLength = project.desc ? project.desc.length : 0;
-                    const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20); // 최소 300px, 내용에 따라 증가
+                    const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20);
                     
-                    // viewport 크기 (UI 요소 제외)
-                    const viewportWidth = window.innerWidth - 300; // 사이드바 등 고려
-                    const viewportHeight = window.innerHeight - 250; // 상하 UI 고려
+                    const viewportWidth = window.innerWidth - 300;
+                    const viewportHeight = window.innerHeight - 250;
                     
-                    // 프로젝트가 viewport에 잘 보이도록 스케일 계산
                     const scaleX = (viewportWidth * 0.9) / cardWidth;
                     const scaleY = (viewportHeight * 0.9) / estimatedCardHeight;
                     const optimalScale = Math.min(scaleX, scaleY, 2);
                     viewportScale.value = Math.max(optimalScale, 0.4);
                     
-                    // 프로젝트 중심(canvas 중심)을 viewport 중심에 맞추기
-                    // canvas transform: translate(X, Y) translate(-50%, -50%) scale(S)
-                    // viewport 중심: (window.innerWidth / 2, window.innerHeight / 2)
-                    // canvas 중심: (window.innerWidth, window.innerHeight)
                     viewportX.value = 0;
                     viewportY.value = 0;
                 };
@@ -463,14 +378,11 @@
                     if (selectedProject.value && projects[selectedProject.value]) {
                         focusOnProject(selectedProject.value);
                     } else if (Object.keys(projects).length > 0) {
-                        // 선택된 프로젝트가 없으면 첫 번째 프로젝트 선택
                         const firstProjectId = Object.keys(projects)[0];
                         selectedProject.value = firstProjectId;
                         nextTick(() => {
                             focusOnProject(firstProjectId);
                         });
-                    } else {
-                        showMessage('표시할 프로젝트가 없습니다.', 'error');
                     }
                 };
 
@@ -480,19 +392,11 @@
                     viewportY.value = 0;
                 };
 
-                // 4. Data Persistence
-                const showMessage = (message, type = 'success') => {
-                    statusMessage.value = { text: message, type };
-                };
-
-                // Helper to migrate old grouped data to flat project list
                 const migrateToFlatProjects = (data) => {
                     if (!data) return {};
-                    // Check if it's already flat (new format)
                     if (Object.values(data).every(item => item && typeof item.title === 'string')) {
                         return data;
                     }
-                    // Assume it's old grouped format
                     let flatProjects = {};
                     for (const groupId in data) {
                         if (data[groupId] && data[groupId].cards) {
@@ -506,11 +410,8 @@
                     try {
                         const key = `opp_projects_${username}`;
                         localStorage.setItem(key, JSON.stringify(projectsData));
-                        showMessage('프로젝트가 저장되었습니다!');
                         return true;
                     } catch (error) {
-                        console.error('저장 오류:', error);
-                        showMessage('저장 중 오류가 발생했습니다.', 'error');
                         return false;
                     }
                 };
@@ -523,7 +424,6 @@
                         const parsed = JSON.parse(data);
                         return migrateToFlatProjects(parsed);
                     } catch (error) {
-                        console.error('로드 오류:', error);
                         return null;
                     }
                 };
@@ -536,9 +436,7 @@
                             body: JSON.stringify(projectsData)
                         });
                         if (!response.ok) throw new Error('저장 실패');
-                        showMessage('프로젝트가 저장되었습니다!');
                     } catch (error) {
-                        console.error('서버 연결 실패. 브라우저 저장소에 저장합니다.', error);
                         saveToLocalStorage(username, projectsData);
                     }
                 };
@@ -553,33 +451,25 @@
                         const data = await response.json();
                         return migrateToFlatProjects(data.projects);
                     } catch (error) {
-                        console.error('서버 연결 실패. 브라우저 저장소에서 로드합니다.', error);
                         return loadFromLocalStorage(username);
                     }
                 };
 
-                // Export/Import functions removed as per user request
-
-                // 5. User Management
                 const loadUserProjects = async () => {
                     let username = usernameInput.value.trim();
                     if (!username) {
                         username = 'guest';
                         usernameInput.value = username;
-                        showMessage('기본 사용자명(guest)으로 시작합니다.', 'success');
                     }
                     currentUser.value = username;
                     const loadedProjects = await loadFromServer(username);
                     if (loadedProjects && Object.keys(loadedProjects).length > 0) {
-                        // Clear existing projects and assign new ones
                         for (const key in projects) {
                             delete projects[key];
                         }
                         Object.assign(projects, loadedProjects);
-                        // 첫 번째 프로젝트 자동 선택 및 zoomToFit
                         const firstProjectId = Object.keys(loadedProjects)[0];
                         selectedProject.value = firstProjectId;
-                        showMessage('프로젝트를 불러왔습니다!');
                         setTimeout(() => {
                             zoomToFit();
                         }, 200);
@@ -590,7 +480,6 @@
                             tags: ['시작하기']
                         };
                         selectedProject.value = 'p1';
-                        showMessage('새로운 사용자입니다. 환영합니다!');
                         setTimeout(() => {
                             zoomToFit();
                         }, 200);
@@ -612,13 +501,11 @@
                     }
                 };
 
-                // 6. Project Management
                 const openAddModal = () => {
                     if (!currentUser.value) {
                         const defaultUser = 'guest';
                         currentUser.value = defaultUser;
                         usernameInput.value = defaultUser;
-                        showMessage('기본 사용자명(guest)으로 프로젝트를 추가합니다.', 'success');
                     }
                     currentEditingProjectId.value = null;
                     isProjectModalOpen.value = true;
@@ -632,37 +519,28 @@
                 const deleteProject = (id) => {
                     if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
                         delete projects[id];
-                        showMessage('프로젝트가 삭제되었습니다!');
-                        closeModal();
-                        setTimeout(() => {
-                            // fitProjectsToView removed
-                        }, 100);
+                        if (selectedProject.value === id) {
+                            selectedProject.value = null;
+                        }
                     }
                 };
 
                 const saveProject = (projectData) => {
                     if (currentEditingProjectId.value) {
                         Object.assign(projects[currentEditingProjectId.value], projectData);
-                        showMessage('프로젝트가 수정되었습니다!');
                     } else {
                         const newId = 'p' + Date.now();
                         projects[newId] = {
                             ...projectData
                         };
-                        showMessage('프로젝트가 추가되었습니다!');
                     }
                     closeModal();
-                    setTimeout(() => {
-                        // fitProjectsToView removed
-                    }, 100);
                 };
 
                 const closeModal = () => {
                     isProjectModalOpen.value = false;
                     currentEditingProjectId.value = null;
                 };
-
-                // updateProjectPosition removed
 
                 const saveAllProjects = async () => {
                     const username = currentUser.value || 'guest';
@@ -673,9 +551,6 @@
                     await saveToServer(username, projects);
                 };
 
-                // Removed group-related functions: selectProject, openAddProjectGroupModal, editProjectGroup, deleteProjectGroup, saveProjectGroup, closeProjectGroupModal
-
-                // 8. Lifecycle
                 onMounted(() => {
                     const lastUser = localStorage.getItem('opp_last_user');
                     if (lastUser) {
@@ -710,7 +585,6 @@
                     isProjectModalOpen,
                     currentEditingProjectId,
                     editingProject,
-                    statusMessage,
                     canvasStyle,
                     loadUserProjects,
                     saveAllProjects,
@@ -719,13 +593,10 @@
                     deleteProject,
                     saveProject,
                     closeModal,
-                    showMessage,
-                    // zoomIn, zoomOut removed
                     startCanvasDrag,
                     isLoginModalOpen,
                     handleLogin,
                     logout,
-                    // fitProjectsToView removed
                     focusOnProject,
                     zoomToFit,
                     resetView,
@@ -735,13 +606,8 @@
             }
         });
 
-        console.log('Registering login-modal component globally...');
         app.component('login-modal', LoginModal);
-        console.log('login-modal registered');
-
-        console.log('About to mount app...');
         app.mount('#app');
-        console.log('✅ Vue app mounted successfully!');
     </script>
 </body>
 
