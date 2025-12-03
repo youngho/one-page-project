@@ -48,8 +48,6 @@
                 class="px-3 py-2 border-2 border-indigo-500 rounded-lg mr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button @click="loadUserProjects"
                 class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">로드</button>
-            <button @click="saveAllProjects"
-                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">저장</button>
             <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold flex items-center gap-2">
                 👤 {{ currentUser }}
                 <button @click="logout"
@@ -299,16 +297,18 @@
                     }
                 };
 
-                const saveToServer = async (username, projectsData) => {
+                const saveProjectToServer = async (username, projectId, projectData) => {
                     try {
+                        const allProjects = { ...projects, [projectId]: projectData };
                         const response = await fetch(`${API_BASE_URL}/${username}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(projectsData)
+                            body: JSON.stringify(allProjects)
                         });
                         if (!response.ok) throw new Error('저장 실패');
                     } catch (error) {
-                        saveToLocalStorage(username, projectsData);
+                        const allProjects = { ...projects, [projectId]: projectData };
+                        saveToLocalStorage(username, allProjects);
                     }
                 };
 
@@ -329,8 +329,7 @@
                 const loadUserProjects = async () => {
                     let username = usernameInput.value.trim();
                     if (!username) {
-                        username = 'guest';
-                        usernameInput.value = username;
+                        return;
                     }
                     currentUser.value = username;
                     const loadedProjects = await loadFromServer(username);
@@ -367,9 +366,7 @@
 
                 const openAddModal = () => {
                     if (!currentUser.value) {
-                        const defaultUser = 'guest';
-                        currentUser.value = defaultUser;
-                        usernameInput.value = defaultUser;
+                        return;
                     }
                     currentEditingProjectId.value = null;
                     isProjectModalOpen.value = true;
@@ -389,13 +386,21 @@
                     }
                 };
 
-                const saveProject = (projectData) => {
-                    if (currentEditingProjectId.value) {
-                        Object.assign(projects[currentEditingProjectId.value], projectData);
-                    } else {
-                        const newId = 'p' + Date.now();
-                        projects[newId] = { ...projectData };
+                const saveProject = async (projectData) => {
+                    if (!currentUser.value) {
+                        return;
                     }
+                    
+                    let projectId;
+                    if (currentEditingProjectId.value) {
+                        projectId = currentEditingProjectId.value;
+                        Object.assign(projects[projectId], projectData);
+                    } else {
+                        projectId = 'p' + Date.now();
+                        projects[projectId] = { ...projectData };
+                    }
+                    
+                    await saveProjectToServer(currentUser.value, projectId, projects[projectId]);
                     closeModal();
                 };
 
@@ -404,25 +409,11 @@
                     currentEditingProjectId.value = null;
                 };
 
-                const saveAllProjects = async () => {
-                    const username = currentUser.value || 'guest';
-                    if (!currentUser.value) {
-                        currentUser.value = username;
-                        usernameInput.value = username;
-                    }
-                    await saveToServer(username, projects);
-                };
-
                 onMounted(() => {
                     const lastUser = localStorage.getItem('opp_last_user');
                     if (lastUser) {
                         currentUser.value = lastUser;
                         usernameInput.value = lastUser;
-                        loadUserProjects();
-                    } else {
-                        const defaultUser = 'guest';
-                        currentUser.value = defaultUser;
-                        usernameInput.value = defaultUser;
                         loadUserProjects();
                     }
 
@@ -444,7 +435,6 @@
                     editingProject,
                     canvasStyle,
                     loadUserProjects,
-                    saveAllProjects,
                     openAddModal,
                     editProject,
                     deleteProject,
