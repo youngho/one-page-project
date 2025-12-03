@@ -286,8 +286,9 @@
             },
             template: `
                 <div 
-                    class="fixed top-20 right-5 px-5 py-4 rounded-lg z-[3000] shadow-lg animate-slide-in"
-                    :class="type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'"
+                    class="fixed top-20 right-5 px-5 py-4 rounded-lg shadow-lg animate-slide-in text-white font-semibold"
+                    :class="type === 'success' ? 'bg-green-500' : 'bg-red-500'"
+                    style="z-index: 9999; pointer-events: auto;"
                 >
                     {{ message }}
                 </div>
@@ -424,17 +425,59 @@
                 const handleProjectClick = (projectId) => {
                     selectedProject.value = projectId;
                     setTimeout(() => {
-                        focusOnProject(projectId);
+                        zoomToFit();
                     }, 100);
                 };
 
                 const focusOnProject = (projectId) => {
-                    if (projects[projectId]) {
-                        // Simply reset viewport to center
-                        viewportScale.value = 1.5;
-                        viewportX.value = 0;
-                        viewportY.value = 0;
+                    if (!projects[projectId]) return;
+                    
+                    // 프로젝트 아이템은 항상 canvas 중심(50%, 50%)에 위치
+                    // canvas는 200% 크기이므로 중심은 (window.innerWidth, window.innerHeight)
+                    // 프로젝트 아이템의 실제 크기 (카드 너비 280px + 패딩 등 고려)
+                    const cardWidth = 280;
+                    // 프로젝트 설명 내용에 따라 높이가 가변적이므로 충분한 높이 고려
+                    const project = projects[projectId];
+                    const descLength = project.desc ? project.desc.length : 0;
+                    const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20); // 최소 300px, 내용에 따라 증가
+                    
+                    // viewport 크기 (UI 요소 제외)
+                    const viewportWidth = window.innerWidth - 300; // 사이드바 등 고려
+                    const viewportHeight = window.innerHeight - 250; // 상하 UI 고려
+                    
+                    // 프로젝트가 viewport에 잘 보이도록 스케일 계산
+                    const scaleX = (viewportWidth * 0.9) / cardWidth;
+                    const scaleY = (viewportHeight * 0.9) / estimatedCardHeight;
+                    const optimalScale = Math.min(scaleX, scaleY, 2);
+                    viewportScale.value = Math.max(optimalScale, 0.4);
+                    
+                    // 프로젝트 중심(canvas 중심)을 viewport 중심에 맞추기
+                    // canvas transform: translate(X, Y) translate(-50%, -50%) scale(S)
+                    // viewport 중심: (window.innerWidth / 2, window.innerHeight / 2)
+                    // canvas 중심: (window.innerWidth, window.innerHeight)
+                    viewportX.value = 0;
+                    viewportY.value = 0;
+                };
+
+                const zoomToFit = () => {
+                    if (selectedProject.value && projects[selectedProject.value]) {
+                        focusOnProject(selectedProject.value);
+                    } else if (Object.keys(projects).length > 0) {
+                        // 선택된 프로젝트가 없으면 첫 번째 프로젝트 선택
+                        const firstProjectId = Object.keys(projects)[0];
+                        selectedProject.value = firstProjectId;
+                        nextTick(() => {
+                            focusOnProject(firstProjectId);
+                        });
+                    } else {
+                        showMessage('표시할 프로젝트가 없습니다.', 'error');
                     }
+                };
+
+                const resetView = () => {
+                    viewportScale.value = 1;
+                    viewportX.value = 0;
+                    viewportY.value = 0;
                 };
 
                 // 4. Data Persistence
@@ -533,18 +576,25 @@
                             delete projects[key];
                         }
                         Object.assign(projects, loadedProjects);
-                        showMessage('프로젝트를 불러왔습니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
+                        // 첫 번째 프로젝트 자동 선택 및 zoomToFit
+                        const firstProjectId = Object.keys(loadedProjects)[0];
+                        selectedProject.value = firstProjectId;
+                        showMessage('프로젝트를 불러왔습니다!');
+                        setTimeout(() => {
+                            zoomToFit();
+                        }, 200);
                     } else {
                         projects['p1'] = {
                             title: '🎨 첫 프로젝트',
                             desc: '여기에 프로젝트를 추가해보세요!',
                             tags: ['시작하기']
                         };
-                        showMessage('새로운 사용자입니다. 환영합니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
+                        selectedProject.value = 'p1';
+                        showMessage('새로운 사용자입니다. 환영합니다!');
+                        setTimeout(() => {
+                            zoomToFit();
+                        }, 200);
                     }
-                    setTimeout(() => {
-                        // fitProjectsToView removed
-                    }, 100);
                 };
 
                 const handleLogin = (username) => {
@@ -640,10 +690,10 @@
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
 
-                    if (Object.keys(projects).length > 0) {
+                    if (Object.keys(projects).length > 0 && selectedProject.value) {
                         setTimeout(() => {
-                            // fitProjectsToView removed
-                        }, 200);
+                            zoomToFit();
+                        }, 300);
                     }
                 });
 
@@ -677,6 +727,8 @@
                     logout,
                     // fitProjectsToView removed
                     focusOnProject,
+                    zoomToFit,
+                    resetView,
                     totalProjectCount,
                     handleProjectClick
                 };
