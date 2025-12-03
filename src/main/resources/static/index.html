@@ -110,14 +110,14 @@
                 class="w-12 h-12 bg-white/90 border-none rounded-full text-2xl cursor-pointer shadow-lg transition-all hover:bg-white hover:scale-110">−</button>
         </div>
 
-        <!-- Viewport -->
+        <!-- Project View -->
         <div class="w-screen h-screen overflow-hidden relative" @wheel.prevent="handleWheel"
             @mousedown="startCanvasDrag" :style="{ cursor: isViewportDragging ? 'grabbing' : 'grab' }">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
                 ref="canvas" :style="canvasStyle">
-                <project-item v-for="(project, id) in projects" :key="id" :project="project" :project-id="id"
-                    :scale="viewportScale" @edit="editProject" @delete="deleteProject"
-                    @update-position="updateProjectPosition" />
+                <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
+                    :project="projects[selectedProject]" :project-id="selectedProject" :scale="viewportScale"
+                    @edit="editProject" @delete="deleteProject" @update-position="updateProjectPosition" />
             </div>
         </div>
 
