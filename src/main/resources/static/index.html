@@ -47,31 +47,75 @@
         <!-- Project List Sidebar -->
         <div
             class="fixed left-5 top-32 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 max-h-[calc(100vh-200px)] overflow-y-auto min-w-[250px]">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록</h2>
-                <button @click="openAddModal"
-                    class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-all"
-                    title="새 프로젝트 그룹 추가">+</button>
-            </div>
-            <div class="space-y-2">
-                <div v-for="(group, groupId) in projectGroups" :key="groupId" @click="selectProjectGroup(groupId)"
-                    class="p-3 rounded-lg cursor-pointer transition-all"
-                    :class="selectedProjectGroup === groupId ? 'bg-indigo-500 text-white' : 'bg-gray-100 hover:bg-gray-200'">
-                    <div class="flex items-center justify-between">
-                        <div class="font-semibold">{{ group.name }}</div>
-                        <div class="text-xs opacity-75">
-                            {{ Object.keys(group.cards || {}).length }}개
+
+            <!-- Group List View -->
+            <div v-if="!selectedProjectGroup">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-bold text-indigo-500">프로젝트 목록 <span
+                            class="text-sm font-normal text-gray-500">({{ totalProjectCount }})</span></h2>
+                    <button @click="openAddProjectGroupModal"
+                        class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-all"
+                        title="새 프로젝트 그룹 추가">+</button>
+                </div>
+                <div class="space-y-2">
+                    <div v-for="(group, groupId) in projectGroups" :key="groupId" @click="selectProjectGroup(groupId)"
+                        class="p-3 rounded-lg cursor-pointer transition-all bg-gray-100 hover:bg-gray-200">
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-semibold">{{ group.name }}</div>
+                            </div>
+                            <!-- Project List inside Group -->
+                            <div class="pl-2 space-y-1">
+                                <div v-for="(card, cardId) in group.cards" :key="cardId"
+                                    @click.stop="selectProjectGroup(groupId); setTimeout(() => focusOnCard(cardId), 100)"
+                                    class="text-sm text-gray-600 hover:text-indigo-500 hover:bg-white/50 p-1 rounded transition-colors flex items-center gap-1">
+                                    <span class="text-xs">📄</span> {{ card.title }}
+                                </div>
+                                <div v-if="Object.keys(group.cards || {}).length === 0"
+                                    class="text-xs text-gray-400 pl-1">
+                                    (비어 있음)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-1 mt-2 justify-end">
+                            <button @click.stop="editProjectGroup(groupId)"
+                                class="px-2 py-1 text-xs rounded bg-gray-300 hover:bg-gray-400 text-gray-700">✏️</button>
+                            <button @click.stop="deleteProjectGroup(groupId)"
+                                class="px-2 py-1 text-xs rounded bg-red-100 text-red-500 hover:bg-red-200">🗑️</button>
                         </div>
                     </div>
-                    <div class="flex gap-1 mt-2">
-                        <button @click.stop="editProjectGroup(groupId)"
-                            class="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30">✏️</button>
-                        <button @click.stop="deleteProjectGroup(groupId)"
-                            class="px-2 py-1 text-xs rounded bg-red-500/20 hover:bg-red-500/30">🗑️</button>
+                    <div v-if="Object.keys(projectGroups).length === 0" class="text-gray-500 text-sm text-center py-4">
+                        프로젝트 그룹이 없습니다
                     </div>
                 </div>
-                <div v-if="Object.keys(projectGroups).length === 0" class="text-gray-500 text-sm text-center py-4">
-                    프로젝트 그룹이 없습니다
+            </div>
+
+            <!-- Selected Group Detail View -->
+            <div v-else>
+                <div class="flex items-center justify-between mb-3">
+                    <button @click="selectedProjectGroup = null"
+                        class="text-sm text-gray-500 hover:text-indigo-500 flex items-center gap-1">
+                        ← 목록으로
+                    </button>
+                    <button @click="openAddModal"
+                        class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-all"
+                        title="새 프로젝트 추가">+ 카드</button>
+                </div>
+                <h2 class="text-lg font-bold text-indigo-500 mb-4 border-b pb-2">
+                    {{ projectGroups[selectedProjectGroup].name }}
+                </h2>
+
+                <div class="space-y-2">
+                    <div v-for="(card, cardId) in projectGroups[selectedProjectGroup].cards" :key="cardId"
+                        @click="focusOnCard(cardId)"
+                        class="p-3 rounded-lg cursor-pointer transition-all bg-white border border-gray-200 hover:border-indigo-300 hover:shadow-md">
+                        <div class="font-semibold text-sm mb-1">{{ card.title }}</div>
+                        <div class="text-xs text-gray-500 truncate">{{ card.desc }}</div>
+                    </div>
+                    <div v-if="Object.keys(projectGroups[selectedProjectGroup].cards || {}).length === 0"
+                        class="text-gray-500 text-sm text-center py-4">
+                        카드가 없습니다
+                    </div>
                 </div>
             </div>
         </div>
@@ -519,6 +563,12 @@
                     return currentEditingGroupId.value ? projectGroups[currentEditingGroupId.value] : null;
                 });
 
+                const totalProjectCount = computed(() => {
+                    return Object.values(projectGroups).reduce((sum, group) => {
+                        return sum + Object.keys(group.cards || {}).length;
+                    }, 0);
+                });
+
                 // 3. Viewport Management
                 const handleWheel = (e) => {
                     e.preventDefault();
@@ -665,6 +715,26 @@
 
                     viewportX.value = viewportCenterX - (centerX * viewportScale.value);
                     viewportY.value = viewportCenterY - (centerY * viewportScale.value);
+                };
+
+                const focusOnCard = (cardId) => {
+                    if (!selectedProjectGroup.value) return;
+                    const group = projectGroups[selectedProjectGroup.value];
+                    if (group && group.cards && group.cards[cardId]) {
+                        const card = group.cards[cardId];
+                        const targetScale = 1.5;
+                        viewportScale.value = targetScale;
+
+                        // Card dimensions (approx)
+                        const cardWidth = 280;
+                        const cardHeight = 200;
+
+                        const cardCenterX = card.x + cardWidth / 2;
+                        const cardCenterY = card.y + cardHeight / 2;
+
+                        viewportX.value = window.innerWidth - (cardCenterX * targetScale);
+                        viewportY.value = window.innerHeight - (cardCenterY * targetScale);
+                    }
                 };
 
                 // 4. Data Persistence
@@ -822,10 +892,9 @@
                     const loadedGroups = await loadFromServer(username);
                     if (loadedGroups && Object.keys(loadedGroups).length > 0) {
                         Object.assign(projectGroups, loadedGroups);
-                        const firstGroupId = Object.keys(loadedGroups)[0];
-                        selectedProjectGroup.value = firstGroupId;
-                        ensureCardsInView(true);
-                        showMessage('프로젝트를 불러왔습니다!');
+                        // 자동 선택 로직 제거
+                        selectedProjectGroup.value = null;
+                        showMessage('프로젝트를 불러왔습니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     } else {
                         const defaultGroupId = 'group_' + Date.now();
                         const centerX = window.innerWidth;
@@ -844,8 +913,9 @@
                                 }
                             }
                         };
-                        selectedProjectGroup.value = defaultGroupId;
-                        showMessage('새로운 사용자입니다. 환영합니다!');
+                        // 새 사용자도 자동 선택 안함
+                        selectedProjectGroup.value = null;
+                        showMessage('새로운 사용자입니다. 환영합니다! 왼쪽 목록에서 프로젝트를 선택하세요.');
                     }
                     setTimeout(() => {
                         fitProjectsToView(1);
@@ -1097,7 +1167,9 @@
                     isLoginModalOpen,
                     handleLogin,
                     logout,
-                    fitProjectsToView
+                    fitProjectsToView,
+                    focusOnCard,
+                    totalProjectCount
                 };
             }
         });
