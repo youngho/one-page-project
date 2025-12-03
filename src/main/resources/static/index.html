@@ -67,7 +67,6 @@
         <!-- Project View -->
         <div class="w-screen h-screen overflow-hidden relative">
             <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
-                ref="canvas" 
                 :style="canvasStyle">
                 <project-item v-if="selectedProject && projects[selectedProject]" 
                     :key="selectedProject"
@@ -215,10 +214,7 @@
                 'project-modal': ProjectModal
             },
             setup() {
-                const canvas = ref(null);
                 const viewportScale = ref(1);
-                const viewportX = ref(0);
-                const viewportY = ref(0);
                 const projects = reactive({});
                 const selectedProject = ref(null);
                 const currentUser = ref('');
@@ -228,7 +224,7 @@
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
                 const canvasStyle = computed(() => ({
-                    transform: `translate(${viewportX.value}px, ${viewportY.value}px) translate(-50%, -50%) scale(${viewportScale.value})`
+                    transform: `translate(-50%, -50%) scale(${viewportScale.value})`
                 }));
 
                 const editingProject = computed(() => {
@@ -261,8 +257,6 @@
                     const optimalScale = Math.min(scaleX, scaleY, 2);
                     
                     viewportScale.value = Math.max(optimalScale, 0.4);
-                    viewportX.value = 0;
-                    viewportY.value = 0;
                 };
 
                 const zoomToFit = () => {
@@ -279,8 +273,6 @@
 
                 const resetView = () => {
                     viewportScale.value = 1;
-                    viewportX.value = 0;
-                    viewportY.value = 0;
                 };
 
                 const migrateToFlatProjects = (data) => {
@@ -454,10 +446,7 @@
                 });
 
                 return {
-                    canvas,
                     viewportScale,
-                    viewportX,
-                    viewportY,
                     projects,
                     selectedProject,
                     currentUser,
