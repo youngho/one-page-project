@@ -135,7 +135,7 @@
             },
             template: `
                 <div class="absolute bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200"
-                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '320px' }">
+                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '95vw', maxWidth: '95vw' }">
                     <div class="mb-6">
                         <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
@@ -268,38 +268,22 @@
 
                 const handleProjectClick = (projectId) => {
                     selectedProject.value = projectId;
-                    setTimeout(() => {
-                        zoomToFit();
-                    }, 100);
                 };
 
                 const focusOnProject = (projectId) => {
                     if (!projects[projectId]) return;
                     
-                    const cardWidth = 320;
+                    const viewportWidth = window.innerWidth - 300;
+                    const viewportHeight = window.innerHeight - 250;
+                    const cardWidth = viewportWidth * 0.95;
                     const project = projects[projectId];
                     const descLength = project.desc ? project.desc.length : 0;
                     const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20);
-                    const viewportWidth = window.innerWidth - 300;
-                    const viewportHeight = window.innerHeight - 250;
-                    const scaleX = (viewportWidth * 0.9) / cardWidth;
-                    const scaleY = (viewportHeight * 0.9) / estimatedCardHeight;
-                    const optimalScale = Math.min(scaleX, scaleY, 2);
+                    const scaleY = (viewportHeight * 0.95) / estimatedCardHeight;
                     
-                    viewportScale.value = Math.max(optimalScale, 0.4);
+                    viewportScale.value = Math.max(Math.min(scaleY, 2), 0.4);
                 };
 
-                const zoomToFit = () => {
-                    if (selectedProject.value && projects[selectedProject.value]) {
-                        focusOnProject(selectedProject.value);
-                    } else if (Object.keys(projects).length > 0) {
-                        const firstProjectId = Object.keys(projects)[0];
-                        selectedProject.value = firstProjectId;
-                        nextTick(() => {
-                            focusOnProject(firstProjectId);
-                        });
-                    }
-                };
 
                 const saveProjectToServer = async (username, projectId, projectData) => {
                     const allProjects = { ...projects, [projectId]: projectData };
@@ -336,9 +320,6 @@
                         Object.assign(projects, loadedProjects);
                         const firstProjectId = Object.keys(loadedProjects)[0];
                         selectedProject.value = firstProjectId;
-                        setTimeout(() => {
-                            zoomToFit();
-                        }, 200);
                     } else {
                         projects['p1'] = {
                             title: '🎨 첫 프로젝트',
@@ -346,9 +327,6 @@
                             tags: ['시작하기']
                         };
                         selectedProject.value = 'p1';
-                        setTimeout(() => {
-                            zoomToFit();
-                        }, 200);
                     }
                 };
 
@@ -404,11 +382,7 @@
                 };
 
                 onMounted(() => {
-                    if (Object.keys(projects).length > 0 && selectedProject.value) {
-                        setTimeout(() => {
-                            zoomToFit();
-                        }, 300);
-                    }
+                    // Initialization logic if needed
                 });
 
                 return {
@@ -428,7 +402,6 @@
                     saveProject,
                     closeModal,
                     logout,
-                    zoomToFit,
                     totalProjectCount,
                     handleProjectClick
                 };
