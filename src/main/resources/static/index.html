@@ -33,7 +33,7 @@
     </style>
 </head>
 
-<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 font-sans min-h-screen">
+<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
     <div id="app">
         <!-- Project Selector -->
         <div class="fixed left-6 top-6 z-[1000] animate-fade-in">
@@ -134,23 +134,23 @@
                 return { renderedDesc };
             },
             template: `
-                <div class="absolute bg-white rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border border-gray-100"
+                <div class="absolute bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200"
                     :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '320px' }">
                     <div class="mb-6">
-                        <h2 class="text-indigo-600 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
-                        <div class="h-1 w-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></div>
+                        <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
+                        <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
                     </div>
-                    <div class="text-gray-600 leading-relaxed mb-6 prose prose-sm max-w-none" v-html="renderedDesc"></div>
+                    <div class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none" v-html="renderedDesc"></div>
                     <div class="flex flex-wrap gap-2 mb-6">
                         <span v-for="tag in project.tags" 
                             :key="tag" 
-                            class="inline-block bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1.5 rounded-full text-xs font-medium text-indigo-600 border border-indigo-100">
+                            class="inline-block bg-stone-100 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 border border-stone-300">
                             {{ tag }}
                         </span>
                     </div>
                     <div class="flex gap-2.5 mt-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                         <button @click.stop="$emit('edit', projectId)"
-                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-indigo-600 hover:to-purple-700 hover:-translate-y-0.5 hover:shadow-lg">
+                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-stone-500 to-stone-600 text-white border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-stone-600 hover:to-stone-700 hover:-translate-y-0.5 hover:shadow-lg">
                             ✏️ 편집
                         </button>
                     </div>
