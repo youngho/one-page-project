@@ -9,18 +9,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/asciidoctor.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366f1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
 </head>
 
-<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-indigo-500 to-purple-600 font-sans">
+<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 font-sans min-h-screen">
     <div id="app">
-        <!-- Project List Sidebar -->
-        <div class="fixed left-5 top-5 bg-white/90 rounded-lg shadow-lg z-[1000] p-4 min-w-[250px]">
-            <div>
-                <div class="mb-3 flex items-center gap-2">
+        <!-- Project Selector -->
+        <div class="fixed left-6 top-6 z-[1000] animate-fade-in">
+            <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
+                <div class="flex items-center gap-2">
                     <select v-model="selectedProject"
                         @change="handleProjectClick(selectedProject)"
-                        class="flex-1 p-3 border-2 border-indigo-500 rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700 cursor-pointer">
-                        <option value="" disabled>프로젝트를 선택하세요</option>
+                        class="flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
                         <option v-for="(project, projectId) in projects" 
                             :key="projectId"
                             :value="projectId">
@@ -31,29 +52,42 @@
                         </option>
                     </select>
                     <button @click="openAddModal"
-                        class="px-3 py-3 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-all whitespace-nowrap"
-                        title="새 프로젝트 추가">
-                        <span class="text-sm font-normal text-white">({{ totalProjectCount }})</span> +
+                        class="px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all whitespace-nowrap shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <span class="text-xs opacity-90 mr-1">({{ totalProjectCount }})</span>+
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- User Panel -->
-        <div class="fixed bottom-5 left-5 bg-white/90 px-5 py-4 rounded-lg z-[1000] shadow-lg">
-            <input type="text" 
-                v-model="usernameInput" 
-                placeholder="사용자명 입력" 
-                @keyup.enter="loadUserProjects"
-                class="px-3 py-2 border-2 border-indigo-500 rounded-lg mr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <button @click="loadUserProjects"
-                class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-sm transition-all hover:bg-indigo-600 hover:-translate-y-0.5 mr-1.5">로드</button>
-            <span v-if="currentUser" class="ml-2.5 text-indigo-500 font-bold flex items-center gap-2">
-                👤 {{ currentUser }}
-                <button @click="logout"
-                    class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors"
-                    title="로그아웃">로그아웃</button>
-            </span>
+        <div class="fixed bottom-6 left-6 z-[1000] animate-fade-in">
+            <div class="glass rounded-2xl shadow-2xl p-5 border border-white/20">
+                <!-- 로그인 전: 사용자명 입력 및 로드 -->
+                <div v-if="!currentUser" class="flex items-center gap-2">
+                    <input type="text" 
+                        v-model="usernameInput" 
+                        placeholder="사용자명 입력" 
+                        @keyup.enter="loadUserProjects"
+                        class="px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all w-40">
+                    <button @click="loadUserProjects"
+                        class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        로드
+                    </button>
+                </div>
+                <!-- 로그인 후: 사용자 정보 및 로그아웃 -->
+                <div v-else class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                            <span class="text-white text-sm">👤</span>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
+                    </div>
+                    <button @click="logout"
+                        class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg">
+                        로그아웃
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Project View -->
@@ -100,20 +134,23 @@
                 return { renderedDesc };
             },
             template: `
-                <div class="absolute bg-white rounded-3xl p-8 shadow-2xl transition-all duration-300 select-none group"
-                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '280px' }">
-                    <h2 class="text-indigo-500 mb-4 text-2xl font-bold">{{ project.title }}</h2>
-                    <div class="text-gray-600 leading-relaxed mb-4 prose prose-sm max-w-none" v-html="renderedDesc"></div>
-                    <div>
+                <div class="absolute bg-white rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border border-gray-100"
+                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '320px' }">
+                    <div class="mb-6">
+                        <h2 class="text-indigo-600 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
+                        <div class="h-1 w-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></div>
+                    </div>
+                    <div class="text-gray-600 leading-relaxed mb-6 prose prose-sm max-w-none" v-html="renderedDesc"></div>
+                    <div class="flex flex-wrap gap-2 mb-6">
                         <span v-for="tag in project.tags" 
                             :key="tag" 
-                            class="inline-block bg-gray-100 px-3 py-1 rounded-2xl text-xs text-indigo-500 mr-1.5 mt-2.5">
+                            class="inline-block bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1.5 rounded-full text-xs font-medium text-indigo-600 border border-indigo-100">
                             {{ tag }}
                         </span>
                     </div>
-                    <div class="flex gap-2.5 mt-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div class="flex gap-2.5 mt-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                         <button @click.stop="$emit('edit', projectId)"
-                            class="px-4 py-2 bg-indigo-500 text-white border-none rounded-lg cursor-pointer text-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-indigo-600 hover:to-purple-700 hover:-translate-y-0.5 hover:shadow-lg">
                             ✏️ 편집
                         </button>
                     </div>
@@ -147,48 +184,51 @@
                 return { form, handleSubmit };
             },
             template: `
-                <div class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center"
+                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 animate-fade-in"
                     @click.self="$emit('close')">
-                    <div class="bg-white p-8 rounded-3xl w-[90%] max-w-lg shadow-2xl">
-                        <h2 class="text-indigo-500 mb-5 text-2xl font-bold">
-                            {{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}
-                        </h2>
+                    <div class="glass rounded-3xl p-8 w-full max-w-lg shadow-2xl border border-white/20 animate-fade-in">
+                        <div class="mb-6">
+                            <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                                {{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}
+                            </h2>
+                            <div class="h-1 w-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></div>
+                        </div>
                         <form @submit="handleSubmit">
-                            <div class="mb-4">
-                                <label class="block mb-1.5 text-gray-600 font-bold">제목 (이모지 포함)</label>
+                            <div class="mb-5">
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">제목 (이모지 포함)</label>
                                 <input type="text" 
                                     v-model="form.title" 
                                     required
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
-                            <div class="mb-4">
-                                <label class="block mb-1.5 text-gray-600 font-bold">설명</label>
+                            <div class="mb-5">
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
                                 <textarea v-model="form.desc" 
                                     required
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm resize-y min-h-20 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                                    class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"></textarea>
                             </div>
-                            <div class="mb-4">
-                                <label class="block mb-1.5 text-gray-600 font-bold">태그 (쉼표로 구분)</label>
+                            <div class="mb-6">
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">태그 (쉼표로 구분)</label>
                                 <input type="text" 
                                     v-model="form.tags" 
                                     placeholder="React, Node.js, MongoDB"
-                                    class="w-full p-2.5 border-2 border-gray-200 rounded-lg font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
-                            <div class="flex gap-2.5 mt-5">
+                            <div class="flex gap-3 mt-6">
                                 <button type="submit"
-                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-indigo-500 text-white">
+                                    class="flex-1 py-3.5 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700">
                                     저장
                                 </button>
                                 <button type="button" 
                                     @click="$emit('close')"
-                                    class="flex-1 py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-200 text-gray-600">
+                                    class="flex-1 py-3.5 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-gray-100 text-gray-700 hover:bg-gray-200">
                                     취소
                                 </button>
                             </div>
-                            <div v-if="isEditing" class="mt-3">
+                            <div v-if="isEditing" class="mt-4">
                                 <button type="button"
                                     @click="$emit('delete')"
-                                    class="w-full py-3 border-none rounded-lg cursor-pointer text-sm font-bold transition-all hover:-translate-y-0.5 hover:shadow-md bg-red-100 text-red-500 hover:bg-red-200">
+                                    class="w-full py-3 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
                                     🗑️ 프로젝트 삭제
                                 </button>
                             </div>
@@ -236,7 +276,7 @@
                 const focusOnProject = (projectId) => {
                     if (!projects[projectId]) return;
                     
-                    const cardWidth = 280;
+                    const cardWidth = 320;
                     const project = projects[projectId];
                     const descLength = project.desc ? project.desc.length : 0;
                     const estimatedCardHeight = Math.max(300, 200 + (descLength / 10) * 20);
@@ -261,69 +301,24 @@
                     }
                 };
 
-                const migrateToFlatProjects = (data) => {
-                    if (!data) return {};
-                    if (Object.values(data).every(item => item && typeof item.title === 'string')) {
-                        return data;
-                    }
-                    let flatProjects = {};
-                    for (const groupId in data) {
-                        if (data[groupId] && data[groupId].cards) {
-                            Object.assign(flatProjects, data[groupId].cards);
-                        }
-                    }
-                    return flatProjects;
-                };
-
-                const saveToLocalStorage = (username, projectsData) => {
-                    try {
-                        const key = `opp_projects_${username}`;
-                        localStorage.setItem(key, JSON.stringify(projectsData));
-                        return true;
-                    } catch (error) {
-                        return false;
-                    }
-                };
-
-                const loadFromLocalStorage = (username) => {
-                    try {
-                        const key = `opp_projects_${username}`;
-                        const data = localStorage.getItem(key);
-                        if (!data) return null;
-                        const parsed = JSON.parse(data);
-                        return migrateToFlatProjects(parsed);
-                    } catch (error) {
-                        return null;
-                    }
-                };
-
                 const saveProjectToServer = async (username, projectId, projectData) => {
-                    try {
-                        const allProjects = { ...projects, [projectId]: projectData };
-                        const response = await fetch(`${API_BASE_URL}/${username}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(allProjects)
-                        });
-                        if (!response.ok) throw new Error('저장 실패');
-                    } catch (error) {
-                        const allProjects = { ...projects, [projectId]: projectData };
-                        saveToLocalStorage(username, allProjects);
-                    }
+                    const allProjects = { ...projects, [projectId]: projectData };
+                    const response = await fetch(`${API_BASE_URL}/${username}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(allProjects)
+                    });
+                    if (!response.ok) throw new Error('저장 실패');
                 };
 
                 const loadFromServer = async (username) => {
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/${username}`);
-                        if (!response.ok) {
-                            if (response.status === 404) return loadFromLocalStorage(username);
-                            throw new Error('로드 실패');
-                        }
-                        const data = await response.json();
-                        return migrateToFlatProjects(data.projects);
-                    } catch (error) {
-                        return loadFromLocalStorage(username);
+                    const response = await fetch(`${API_BASE_URL}/${username}`);
+                    if (!response.ok) {
+                        if (response.status === 404) return null;
+                        throw new Error('로드 실패');
                     }
+                    const data = await response.json();
+                    return data.projects || {};
                 };
 
                 const loadUserProjects = async () => {
@@ -359,7 +354,6 @@
 
                 const logout = () => {
                     if (confirm('로그아웃 하시겠습니까?')) {
-                        localStorage.removeItem('opp_last_user');
                         location.reload();
                     }
                 };
@@ -410,13 +404,6 @@
                 };
 
                 onMounted(() => {
-                    const lastUser = localStorage.getItem('opp_last_user');
-                    if (lastUser) {
-                        currentUser.value = lastUser;
-                        usernameInput.value = lastUser;
-                        loadUserProjects();
-                    }
-
                     if (Object.keys(projects).length > 0 && selectedProject.value) {
                         setTimeout(() => {
                             zoomToFit();
