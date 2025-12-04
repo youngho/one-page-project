@@ -216,10 +216,10 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-6">
-                        <span v-for="tag in project.tags" 
-                            :key="tag" 
+                        <span v-for="descItem in project.desc" 
+                            :key="descItem" 
                             class="inline-block bg-stone-100 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 border border-stone-300">
-                            {{ tag }}
+                            {{ descItem }}
                         </span>
                     </div>
                     <div class="flex gap-2.5 mt-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 justify-end">
@@ -242,16 +242,16 @@
                 const form = reactive({
                     title: props.project?.title || '',
                     content: props.project?.content || '',
-                    tags: props.project?.tags?.join(', ') || ''
+                    desc: props.project?.desc?.join(', ') || ''
                 });
 
                 const handleSubmit = (e) => {
                     e.preventDefault();
-                    const tags = form.tags.split(',').map(t => t.trim()).filter(t => t);
+                    const desc = form.desc.split(',').map(t => t.trim()).filter(t => t);
                     emit('save', {
                         title: form.title,
                         content: form.content,
-                        tags
+                        desc
                     });
                 };
 
@@ -276,16 +276,16 @@
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
                             <div class="mb-5">
-                                <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">내용</label>
                                 <textarea v-model="form.content" 
                                     required
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"></textarea>
                             </div>
                             <div class="mb-6">
-                                <label class="block mb-2 text-sm font-semibold text-gray-700">태그 (쉼표로 구분)</label>
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
                                 <input type="text" 
-                                    v-model="form.tags" 
-                                    placeholder="React, Node.js, MongoDB"
+                                    v-model="form.desc" 
+                                    placeholder="프로젝트 설명을 입력하세요 (AsciiDoc 형식 지원)"
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
                             <div class="flex gap-3 mt-6">

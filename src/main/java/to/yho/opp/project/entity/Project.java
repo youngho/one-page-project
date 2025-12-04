@@ -29,7 +29,7 @@ public class Project {
     private String content;
 
     @Column(columnDefinition = "TEXT")
-    private String tags;
+    private String desc;
 
       @Column(name = "created_at")
     private LocalDateTime createdAt;
