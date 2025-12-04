@@ -26,7 +26,7 @@ public class Project {
     private String title;
 
     @Column(columnDefinition = "TEXT")
-    private String description;
+    private String content;
 
     @Column(columnDefinition = "TEXT")
     private String tags;

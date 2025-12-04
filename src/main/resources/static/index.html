@@ -125,54 +125,54 @@
             emits: ['edit', 'delete', 'update'],
             setup(props, { emit }) {
                 const { ref, nextTick } = Vue;
-                const isEditingDesc = ref(false);
-                const editingDesc = ref('');
-                const descHeight = ref('auto');
-                const descRef = ref(null);
+                const isEditingContent = ref(false);
+                const editingContent = ref('');
+                const contentHeight = ref('auto');
+                const contentRef = ref(null);
 
-                const renderedDesc = computed(() => {
-                    if (!props.project.desc) return '';
-                    return asciidoctor.convert(props.project.desc, { 
+                const renderedContent = computed(() => {
+                    if (!props.project.content) return '';
+                    return asciidoctor.convert(props.project.content, { 
                         safe: 'safe', 
                         attributes: { showtitle: false } 
                     });
                 });
 
                 const startEditing = () => {
-                    if (descRef.value) {
-                        descHeight.value = descRef.value.offsetHeight + 'px';
+                    if (contentRef.value) {
+                        contentHeight.value = contentRef.value.offsetHeight + 'px';
                     }
-                    isEditingDesc.value = true;
-                    editingDesc.value = props.project.desc || '';
+                    isEditingContent.value = true;
+                    editingContent.value = props.project.content || '';
                     nextTick(() => {
-                        const textarea = document.querySelector('.desc-textarea');
+                        const textarea = document.querySelector('.content-textarea');
                         if (textarea) {
-                            textarea.style.height = descHeight.value;
+                            textarea.style.height = contentHeight.value;
                             textarea.focus();
                             textarea.select();
                         }
                     });
                 };
 
-                const saveDesc = () => {
-                    if (editingDesc.value !== props.project.desc) {
+                const saveContent = () => {
+                    if (editingContent.value !== props.project.content) {
                         emit('update', {
                             ...props.project,
-                            desc: editingDesc.value
+                            content: editingContent.value
                         });
                     }
-                    isEditingDesc.value = false;
+                    isEditingContent.value = false;
                 };
 
                 const cancelEditing = () => {
-                    editingDesc.value = props.project.desc || '';
-                    isEditingDesc.value = false;
+                    editingContent.value = props.project.content || '';
+                    isEditingContent.value = false;
                 };
 
                 const handleKeydown = (e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                         e.preventDefault();
-                        saveDesc();
+                        saveContent();
                     } else if (e.key === 'Escape') {
                         e.preventDefault();
                         cancelEditing();
@@ -180,13 +180,13 @@
                 };
 
                 return { 
-                    renderedDesc, 
-                    isEditingDesc, 
-                    editingDesc, 
-                    descHeight,
-                    descRef,
+                    renderedContent, 
+                    isEditingContent, 
+                    editingContent, 
+                    contentHeight,
+                    contentRef,
                     startEditing, 
-                    saveDesc, 
+                    saveContent, 
                     cancelEditing,
                     handleKeydown
                 };
@@ -198,18 +198,18 @@
                         <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
                     </div>
-                    <div v-if="!isEditingDesc" 
-                        ref="descRef"
+                    <div v-if="!isEditingContent" 
+                        ref="contentRef"
                         @dblclick="startEditing"
                         class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none cursor-text hover:bg-stone-100/50 rounded-lg p-2 -m-2 transition-colors"
-                        v-html="renderedDesc"></div>
+                        v-html="renderedContent"></div>
                     <div v-else class="mb-6">
                         <textarea 
-                            v-model="editingDesc"
-                            @blur="saveDesc"
+                            v-model="editingContent"
+                            @blur="saveContent"
                             @keydown="handleKeydown"
-                            :style="{ height: descHeight }"
-                            class="desc-textarea w-full px-4 py-3 bg-white border-2 border-stone-300 rounded-xl font-sans text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-stone-500 transition-all"
+                            :style="{ height: contentHeight }"
+                            class="content-textarea w-full px-4 py-3 bg-white border-2 border-stone-300 rounded-xl font-sans text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-stone-500 transition-all"
                             placeholder="프로젝트 설명을 입력하세요 (AsciiDoc 형식 지원)"></textarea>
                         <div class="mt-2 text-xs text-stone-500">
                             Ctrl/Cmd + Enter: 저장 | ESC: 취소
@@ -241,7 +241,7 @@
             setup(props, { emit }) {
                 const form = reactive({
                     title: props.project?.title || '',
-                    desc: props.project?.desc || '',
+                    content: props.project?.content || '',
                     tags: props.project?.tags?.join(', ') || ''
                 });
 
@@ -250,7 +250,7 @@
                     const tags = form.tags.split(',').map(t => t.trim()).filter(t => t);
                     emit('save', {
                         title: form.title,
-                        desc: form.desc,
+                        content: form.content,
                         tags
                     });
                 };
@@ -277,7 +277,7 @@
                             </div>
                             <div class="mb-5">
                                 <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
-                                <textarea v-model="form.desc" 
+                                <textarea v-model="form.content" 
                                     required
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"></textarea>
                             </div>

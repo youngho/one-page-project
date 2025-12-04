@@ -44,7 +44,7 @@ public class ProjectService {
         project.setUsername(username);
         project.setProjectId(projectDto.getProjectId());
         project.setTitle(projectDto.getTitle());
-        project.setDescription(projectDto.getDesc());
+        project.setContent(projectDto.getContent());
 //        project.setTags(toJson(projectDto.getTags()));
 
         Project saved = projectRepository.save(project);
@@ -60,7 +60,7 @@ public class ProjectService {
         ProjectDto dto = new ProjectDto();
         dto.setProjectId(project.getProjectId());
         dto.setTitle(project.getTitle());
-        dto.setDesc(project.getDescription());
+        dto.setContent(project.getContent());
 //        dto.setTags(fromJson(project.getTags()));
         return dto;
     }
@@ -70,7 +70,7 @@ public class ProjectService {
         project.setUsername(username);
         project.setProjectId(dto.getProjectId());
         project.setTitle(dto.getTitle());
-        project.setDescription(dto.getDesc());
+        project.setContent(dto.getContent());
 //        project.setTags(toJson(dto.getTags()));
         return project;
     }

@@ -8,7 +8,7 @@ import java.util.List;
 public class ProjectDto {
     private String projectId;
     private String title;
-    private String desc;
+    private String content;
     private List<String> tags;
 }
 
