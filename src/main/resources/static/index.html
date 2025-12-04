@@ -35,10 +35,11 @@
 
 <body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
     <div id="app">
-        <!-- Project Selector -->
-        <div class="fixed left-6 top-6 z-[1000] animate-fade-in">
+        <!-- Project Selector & User Panel -->
+        <div class="fixed right-6 top-6 z-[1000] animate-fade-in">
             <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
-                <div class="flex items-center gap-2">
+                <!-- Project Selector -->
+                <div class="flex items-center gap-2 mb-4">
                     <select v-model="selectedProject"
                         @change="projectClick(selectedProject)"
                         class="flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
@@ -56,36 +57,34 @@
                         <span class="text-xs opacity-90 mr-1">({{ totalProjectCount }})</span>+
                     </button>
                 </div>
-            </div>
-        </div>
-
-        <!-- User Panel -->
-        <div class="fixed bottom-6 left-6 z-[1000] animate-fade-in">
-            <div class="glass rounded-2xl shadow-2xl p-5 border border-white/20">
-                <!-- 로그인 전: 사용자명 입력 및 로드 -->
-                <div v-if="!currentUser" class="flex items-center gap-2">
-                    <input type="text" 
-                        v-model="usernameInput" 
-                        placeholder="사용자명 입력" 
-                        @keyup.enter="loadUserProjects"
-                        class="px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all w-40">
-                    <button @click="loadUserProjects"
-                        class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                        로드
-                    </button>
-                </div>
-                <!-- 로그인 후: 사용자 정보 및 로그아웃 -->
-                <div v-else class="flex items-center gap-3">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
-                            <span class="text-white text-sm">👤</span>
-                        </div>
-                        <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
+                
+                <!-- User Panel -->
+                <div class="border-t border-white/20 pt-4">
+                    <!-- 로그인 전: 사용자명 입력 및 로드 -->
+                    <div v-if="!currentUser" class="flex items-center gap-2">
+                        <input type="text" 
+                            v-model="usernameInput" 
+                            placeholder="사용자명 입력" 
+                            @keyup.enter="loadUserProjects"
+                            class="flex-1 px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                        <button @click="loadUserProjects"
+                            class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            로드
+                        </button>
                     </div>
-                    <button @click="logout"
-                        class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg">
-                        로그아웃
-                    </button>
+                    <!-- 로그인 후: 사용자 정보 및 로그아웃 -->
+                    <div v-else class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                                <span class="text-white text-sm">👤</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
+                        </div>
+                        <button @click="logout"
+                            class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg">
+                            로그아웃
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
