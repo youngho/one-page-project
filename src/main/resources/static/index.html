@@ -99,7 +99,8 @@
                     :project="projects[selectedProject]" 
                     :project-id="selectedProject"
                     @edit="projectEditModal" 
-                    @delete="deleteProject" />
+                    @delete="deleteProject"
+                    @update="updateProject" />
             </div>
         </div>
 
@@ -113,7 +114,7 @@
     </div>
 
     <script>
-        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+        const { createApp, ref, reactive, computed, nextTick } = Vue;
         const asciidoctor = Asciidoctor();
 
         const ProjectItem = {
@@ -121,8 +122,14 @@
                 project: Object,
                 projectId: String
             },
-            emits: ['edit', 'delete'],
+            emits: ['edit', 'delete', 'update'],
             setup(props, { emit }) {
+                const { ref, nextTick } = Vue;
+                const isEditingDesc = ref(false);
+                const editingDesc = ref('');
+                const descHeight = ref('auto');
+                const descRef = ref(null);
+
                 const renderedDesc = computed(() => {
                     if (!props.project.desc) return '';
                     return asciidoctor.convert(props.project.desc, { 
@@ -131,7 +138,58 @@
                     });
                 });
 
-                return { renderedDesc };
+                const startEditing = () => {
+                    if (descRef.value) {
+                        descHeight.value = descRef.value.offsetHeight + 'px';
+                    }
+                    isEditingDesc.value = true;
+                    editingDesc.value = props.project.desc || '';
+                    nextTick(() => {
+                        const textarea = document.querySelector('.desc-textarea');
+                        if (textarea) {
+                            textarea.style.height = descHeight.value;
+                            textarea.focus();
+                            textarea.select();
+                        }
+                    });
+                };
+
+                const saveDesc = () => {
+                    if (editingDesc.value !== props.project.desc) {
+                        emit('update', {
+                            ...props.project,
+                            desc: editingDesc.value
+                        });
+                    }
+                    isEditingDesc.value = false;
+                };
+
+                const cancelEditing = () => {
+                    editingDesc.value = props.project.desc || '';
+                    isEditingDesc.value = false;
+                };
+
+                const handleKeydown = (e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        saveDesc();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelEditing();
+                    }
+                };
+
+                return { 
+                    renderedDesc, 
+                    isEditingDesc, 
+                    editingDesc, 
+                    descHeight,
+                    descRef,
+                    startEditing, 
+                    saveDesc, 
+                    cancelEditing,
+                    handleKeydown
+                };
             },
             template: `
                 <div class="absolute bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200"
@@ -140,7 +198,23 @@
                         <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
                     </div>
-                    <div class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none" v-html="renderedDesc"></div>
+                    <div v-if="!isEditingDesc" 
+                        ref="descRef"
+                        @dblclick="startEditing"
+                        class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none cursor-text hover:bg-stone-100/50 rounded-lg p-2 -m-2 transition-colors"
+                        v-html="renderedDesc"></div>
+                    <div v-else class="mb-6">
+                        <textarea 
+                            v-model="editingDesc"
+                            @blur="saveDesc"
+                            @keydown="handleKeydown"
+                            :style="{ height: descHeight }"
+                            class="desc-textarea w-full px-4 py-3 bg-white border-2 border-stone-300 rounded-xl font-sans text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-500 focus:border-stone-500 transition-all"
+                            placeholder="프로젝트 설명을 입력하세요 (AsciiDoc 형식 지원)"></textarea>
+                        <div class="mt-2 text-xs text-stone-500">
+                            Ctrl/Cmd + Enter: 저장 | ESC: 취소
+                        </div>
+                    </div>
                     <div class="flex flex-wrap gap-2 mb-6">
                         <span v-for="tag in project.tags" 
                             :key="tag" 
@@ -148,9 +222,9 @@
                             {{ tag }}
                         </span>
                     </div>
-                    <div class="flex gap-2.5 mt-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div class="flex gap-2.5 mt-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 justify-end">
                         <button @click.stop="$emit('edit', projectId)"
-                            class="flex-1 px-4 py-2.5 bg-gradient-to-r from-stone-500 to-stone-600 text-white border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-stone-600 hover:to-stone-700 hover:-translate-y-0.5 hover:shadow-lg">
+                            class="px-3 py-1.5 bg-gradient-to-r from-stone-500 to-stone-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all hover:from-stone-600 hover:to-stone-700 hover:-translate-y-0.5 hover:shadow-lg">
                             ✏️ 편집
                         </button>
                     </div>
@@ -244,7 +318,6 @@
                 'project-modal': ProjectModal
             },
             setup() {
-                const viewportScale = ref(1);
                 const projects = reactive({});
                 const selectedProject = ref(null);
                 const currentUser = ref('');
@@ -254,7 +327,7 @@
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
                 const canvasStyle = computed(() => ({
-                    transform: `translate(-50%, -50%) scale(${viewportScale.value})`
+                    transform: 'translate(-50%, -50%) scale(1)'
                 }));
 
                 const editingProject = computed(() => {
@@ -336,6 +409,14 @@
                     }
                 };
 
+                const updateProject = async (projectData) => {
+                    if (!currentUser.value || !selectedProject.value) {
+                        return;
+                    }
+                    Object.assign(projects[selectedProject.value], projectData);
+                    await saveProjectToServer(currentUser.value, selectedProject.value, projects[selectedProject.value]);
+                };
+
                 const saveProject = async (projectData) => {
                     if (!currentUser.value) {
                         return;
@@ -359,12 +440,7 @@
                     currentEditingProjectId.value = null;
                 };
 
-                onMounted(() => {
-                    // Initialization logic if needed
-                });
-
                 return {
-                    viewportScale,
                     projects,
                     selectedProject,
                     currentUser,
@@ -378,6 +454,7 @@
                     projectAddModal,
                     projectEditModal,
                     deleteProject,
+                    updateProject,
                     saveProject,
                     closeModal,
                     logout,
