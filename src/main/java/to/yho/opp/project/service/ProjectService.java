@@ -1,7 +1,5 @@
 package to.yho.opp.project.service;
 
-//import com.fasterxml.jackson.core.JsonProcessingException;
-//import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,7 +7,6 @@ import to.yho.opp.project.dto.ProjectDto;
 import to.yho.opp.project.entity.Project;
 import to.yho.opp.project.repository.ProjectRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,8 +46,6 @@ public class ProjectService {
         project.setTitle(projectDto.getTitle());
         project.setDescription(projectDto.getDesc());
 //        project.setTags(toJson(projectDto.getTags()));
-        project.setPositionX(projectDto.getX());
-        project.setPositionY(projectDto.getY());
 
         Project saved = projectRepository.save(project);
         return toDto(saved);
@@ -67,8 +62,6 @@ public class ProjectService {
         dto.setTitle(project.getTitle());
         dto.setDesc(project.getDescription());
 //        dto.setTags(fromJson(project.getTags()));
-        dto.setX(project.getPositionX());
-        dto.setY(project.getPositionY());
         return dto;
     }
 
@@ -79,28 +72,9 @@ public class ProjectService {
         project.setTitle(dto.getTitle());
         project.setDescription(dto.getDesc());
 //        project.setTags(toJson(dto.getTags()));
-        project.setPositionX(dto.getX());
-        project.setPositionY(dto.getY());
         return project;
     }
 
-//    private String toJson(List<String> tags) {
-//        try {
-//            return objectMapper.writeValueAsString(tags);
-//        } catch (JsonProcessingException e) {
-//            return "[]";
-//        }
-//    }
 
-//    private List<String> fromJson(String json) {
-//        try {
-//            return objectMapper.readValue(
-//                    json,
-//                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-//            );
-//        } catch (JsonProcessingException e) {
-//            return new ArrayList<>();
-//        }
-//    }
 }
 
