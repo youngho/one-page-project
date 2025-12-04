@@ -31,13 +31,7 @@ public class Project {
     @Column(columnDefinition = "TEXT")
     private String tags;
 
-    @Column(nullable = false)
-    private Double positionX;
-
-    @Column(nullable = false)
-    private Double positionY;
-
-    @Column(name = "created_at")
+      @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")

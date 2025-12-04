@@ -10,7 +10,5 @@ public class ProjectDto {
     private String title;
     private String desc;
     private List<String> tags;
-    private Double x;
-    private Double y;
 }
 
