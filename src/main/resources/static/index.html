@@ -90,9 +90,8 @@
         </div>
 
         <!-- Project View -->
-        <div class="w-screen h-screen overflow-hidden relative">
-            <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 origin-center transition-transform duration-100"
-                :style="canvasStyle">
+        <div class="w-screen h-screen overflow-auto relative">
+            <div class="min-h-full min-w-full flex items-center justify-center p-6">
                 <project-item v-if="selectedProject && projects[selectedProject]" 
                     :key="selectedProject"
                     :project="projects[selectedProject]" 
@@ -191,8 +190,8 @@
                 };
             },
             template: `
-                <div class="absolute bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200"
-                    :style="{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '95vw', maxWidth: '95vw' }">
+                <div class="bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200 overflow-y-auto"
+                    :style="{ width: '95vw', maxWidth: '95vw', maxHeight: '95vh' }">
                     <div class="mb-6">
                         <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
@@ -325,10 +324,6 @@
                 const currentEditingProjectId = ref(null);
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
-                const canvasStyle = computed(() => ({
-                    transform: 'translate(-50%, -50%) scale(1)'
-                }));
-
                 const editingProject = computed(() => {
                     if (!currentEditingProjectId.value) return null;
                     return projects[currentEditingProjectId.value] || null;
@@ -447,7 +442,6 @@
                     isProjectModalOpen,
                     currentEditingProjectId,
                     editingProject,
-                    canvasStyle,
                     totalProjectCount,
                     loadUserProjects,
                     projectAddModal,
