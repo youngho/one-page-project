@@ -156,7 +156,10 @@
                     });
                 });
 
-                const startEditing = () => {
+                const startEditing = (e) => {
+                    if (!e.shiftKey) {
+                        return;
+                    }
                     if (contentRef.value) {
                         contentHeight.value = contentRef.value.offsetHeight + 'px';
                     }
@@ -210,16 +213,16 @@
                 };
             },
             template: `
-                <div class="bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 select-none group border-2 border-stone-200 overflow-y-auto"
+                <div class="bg-stone-50 rounded-3xl p-10 shadow-2xl transition-all duration-300 group border-2 border-stone-200 overflow-y-auto"
                     :style="{ width: '95vw', maxWidth: '95vw', maxHeight: '95vh' }">
                     <div class="mb-6">
-                        <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight">{{ project.title }}</h2>
+                        <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight select-text">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
                     </div>
                     <div v-if="!isEditingContent" 
                         ref="contentRef"
                         @dblclick="startEditing"
-                        class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none cursor-text hover:bg-stone-100/50 rounded-lg p-2 -m-2 transition-colors"
+                        class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none cursor-text hover:bg-stone-100/50 rounded-lg p-2 -m-2 transition-colors select-text"
                         v-html="renderedContent"></div>
                     <div v-else class="mb-6">
                         <textarea 
@@ -236,7 +239,7 @@
                     <div class="flex flex-wrap gap-2 mb-6">
                         <span v-for="descItem in project.desc" 
                             :key="descItem" 
-                            class="inline-block bg-stone-100 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 border border-stone-300">
+                            class="inline-block bg-stone-100 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 border border-stone-300 select-text">
                             {{ descItem }}
                         </span>
                     </div>
