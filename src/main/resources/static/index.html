@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>One Page Project</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/asciidoctor.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,8 +19,15 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out;
+        }
+        .animate-logo-float {
+            animation: logoFloat 3s ease-in-out infinite;
         }
         .glass {
             background: rgba(255, 255, 255, 0.95);
@@ -35,6 +47,14 @@
 
 <body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
     <div id="app">
+        <!-- Logo -->
+        <div v-if="Object.keys(projects).length === 0" 
+             class="fixed inset-0 flex items-center justify-center z-[500] pointer-events-none">
+            <img src="images/logo.png" 
+                 alt="OPP Logo" 
+                 class="h-16 w-auto animate-logo-float opacity-60">
+        </div>
+
         <!-- Project Selector & User Panel -->
         <div class="fixed right-6 top-6 z-[1000] animate-fade-in">
             <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
