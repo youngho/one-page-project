@@ -16,24 +16,43 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         @keyframes logoFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
         }
+
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out;
         }
+
         .animate-logo-float {
             animation: logoFloat 3s ease-in-out infinite;
         }
+
         .glass {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
         }
+
         select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366f1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
@@ -45,14 +64,13 @@
     </style>
 </head>
 
-<body class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
+<body
+    class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
     <div id="app">
         <!-- Logo -->
-        <div v-if="Object.keys(projects).length === 0" 
-             class="fixed inset-0 flex items-center justify-center z-[500] pointer-events-none">
-            <img src="images/logo.png" 
-                 alt="OPP Logo" 
-                 class="h-16 w-auto animate-logo-float opacity-60">
+        <div v-if="Object.keys(projects).length === 0"
+            class="fixed inset-0 flex items-center justify-center z-[500] pointer-events-none">
+            <img src="images/logo.png" alt="OPP Logo" class="h-16 w-auto animate-logo-float opacity-60">
         </div>
 
         <!-- Project Selector & User Panel -->
@@ -60,12 +78,9 @@
             <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
                 <!-- Project Selector -->
                 <div class="flex items-center gap-2 mb-4">
-                    <select v-model="selectedProject"
-                        @change="projectClick(selectedProject)"
+                    <select v-model="selectedProject" @change="projectClick(selectedProject)"
                         class="flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
-                        <option v-for="(project, projectId) in projects" 
-                            :key="projectId"
-                            :value="projectId">
+                        <option v-for="(project, projectId) in projects" :key="projectId" :value="projectId">
                             {{ project.title }}
                         </option>
                         <option v-if="Object.keys(projects).length === 0" value="" disabled>
@@ -77,15 +92,12 @@
                         <span class="text-xs opacity-90 mr-1">({{ totalProjectCount }})</span>+
                     </button>
                 </div>
-                
+
                 <!-- User Panel -->
                 <div class="border-t border-white/20 pt-4">
                     <!-- 로그인 전: 사용자명 입력 및 로드 -->
                     <div v-if="!currentUser" class="flex items-center gap-2">
-                        <input type="text" 
-                            v-model="usernameInput" 
-                            placeholder="사용자명 입력" 
-                            @keyup.enter="loadUserProjects"
+                        <input type="text" v-model="usernameInput" placeholder="사용자명 입력" @keyup.enter="loadUserProjects"
                             class="flex-1 px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                         <button @click="loadUserProjects"
                             class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
@@ -95,7 +107,8 @@
                     <!-- 로그인 후: 사용자 정보 및 로그아웃 -->
                     <div v-else class="flex items-center gap-3">
                         <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                            <div
+                                class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
                                 <span class="text-white text-sm">👤</span>
                             </div>
                             <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
@@ -112,23 +125,15 @@
         <!-- Project View -->
         <div class="w-screen h-screen overflow-auto relative">
             <div class="min-h-full min-w-full flex items-center justify-center p-6">
-                <project-item v-if="selectedProject && projects[selectedProject]" 
-                    :key="selectedProject"
-                    :project="projects[selectedProject]" 
-                    :project-id="selectedProject"
-                    @edit="projectEditModal" 
-                    @delete="deleteProject"
-                    @update="updateProject" />
+                <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
+                    :project="projects[selectedProject]" :project-id="selectedProject" @edit="projectEditModal"
+                    @delete="deleteProject" @update="updateProject" />
             </div>
         </div>
 
         <!-- Modal -->
-        <project-modal v-if="isProjectModalOpen" 
-            :project="editingProject" 
-            :is-editing="!!currentEditingProjectId"
-            @close="closeModal" 
-            @save="saveProject" 
-            @delete="deleteProject(currentEditingProjectId)" />
+        <project-modal v-if="isProjectModalOpen" :project="editingProject" :is-editing="!!currentEditingProjectId"
+            @close="closeModal" @save="saveProject" @delete="deleteProject(currentEditingProjectId)" />
     </div>
 
     <script>
@@ -142,124 +147,195 @@
             },
             emits: ['edit', 'delete', 'update'],
             setup(props, { emit }) {
-                const { ref, nextTick, onMounted, watch } = Vue;
+                const { ref, nextTick, onMounted, onUnmounted, watch, computed } = Vue;
                 const isEditingContent = ref(false);
                 const editingContent = ref('');
                 const contentHeight = ref('auto');
                 const contentRef = ref(null);
+                const iframeRef = ref(null);
 
                 const renderedContent = computed(() => {
                     if (!props.project.content) return '';
-                    return asciidoctor.convert(props.project.content, { 
-                        safe: 'safe', 
-                        attributes: { showtitle: false } 
+                    return asciidoctor.convert(props.project.content, {
+                        safe: 'safe',
+                        attributes: { showtitle: false }
                     });
                 });
 
-                const handleTocClick = (e) => {
-                    e.preventDefault();
-                    const target = e.target.closest('a[href^="#"]');
-                    if (!target || !contentRef.value) return;
-                    
-                    const href = target.getAttribute('href');
-                    if (!href || !href.startsWith('#')) return;
-                    
-                    const linkId = decodeURIComponent(href.substring(1));
-                    
-                    // 방법 1: 직접 ID로 찾기
-                    let element = contentRef.value.querySelector(`#${CSS.escape(linkId)}`);
-                    
-                    // 방법 2: AsciiDoc ID 변환 규칙 적용
-                    // 링크: "기본-게임플레이-사운드" -> ID: "_기본_게임플레이_사운드"
-                    if (!element) {
-                        const normalizedId = '_' + linkId.replace(/-/g, '_');
-                        element = contentRef.value.querySelector(`#${CSS.escape(normalizedId)}`);
-                    }
-                    
-                    // 방법 3: 모든 ID를 순회하며 매칭
-                    if (!element) {
-                        const allElements = contentRef.value.querySelectorAll('[id]');
-                        for (const el of allElements) {
-                            const elId = el.getAttribute('id');
-                            if (!elId) continue;
-                            
-                            // 정확히 일치
-                            if (elId === linkId) {
-                                element = el;
-                                break;
-                            }
-                            
-                            // 하이픈/언더스코어 변환 후 비교
-                            const linkNormalized = linkId.replace(/-/g, '_');
-                            const elNormalized = elId.replace(/-/g, '_');
-                            if (linkNormalized === elNormalized || 
-                                '_' + linkNormalized === elNormalized ||
-                                linkNormalized === '_' + elNormalized) {
-                                element = el;
-                                break;
-                            }
+                const iframeSrcDoc = computed(() => {
+                    const content = renderedContent.value;
+                    if (!content) return '';
+                    return `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/css/asciidoctor.min.css">
+                            <style>
+                                body { 
+                                    margin: 0; 
+                                    padding: 1rem; 
+                                    font-family: "Inter", sans-serif; /* Match parent font */
+                                }
+                                /* Custom scrollbar to match parent mostly */
+                                ::-webkit-scrollbar {
+                                    width: 8px;
+                                    height: 8px;
+                                }
+                                ::-webkit-scrollbar-track {
+                                    background: transparent;
+                                }
+                                ::-webkit-scrollbar-thumb {
+                                    background: #d6d3d1;
+                                    border-radius: 4px;
+                                }
+                                ::-webkit-scrollbar-thumb:hover {
+                                    background: #a8a29e;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div id="content">${content}</div>
+                            <script>
+                                const sendHeight = () => {
+                                    const height = document.body.scrollHeight;
+                                    window.parent.postMessage({ type: 'resize', height: height }, '*');
+                                };
+
+                                window.addEventListener('load', sendHeight);
+                                window.addEventListener('resize', sendHeight);
+                                
+                                const observer = new ResizeObserver(sendHeight);
+                                observer.observe(document.body);
+
+                                document.addEventListener('dblclick', (e) => {
+                                    window.parent.postMessage({ type: 'edit', shiftKey: e.shiftKey }, '*');
+                                });
+
+                                // Smart TOC handling logic restored
+                                document.addEventListener('click', (e) => {
+                                    const target = e.target.closest('a[href^="#"]');
+                                    if (!target) {
+                                        // Handle external links
+                                        const externalTarget = e.target.closest('a');
+                                        if (externalTarget) {
+                                            const href = externalTarget.getAttribute('href');
+                                            if (href && !href.startsWith('#')) {
+                                                e.preventDefault();
+                                                window.open(href, '_blank');
+                                            }
+                                        }
+                                        return;
+                                    }
+                                    
+                                    const href = target.getAttribute('href');
+                                    if (!href || !href.startsWith('#')) return;
+                                    
+                                    e.preventDefault();
+                                    const linkId = decodeURIComponent(href.substring(1));
+                                    const contentRoot = document.getElementById('content') || document.body;
+                                    
+                                    // Method 1: Direct ID match
+                                    let element = contentRoot.querySelector(\`#\${CSS.escape(linkId)}\`);
+                                    
+                                    // Method 2: AsciiDoc ID normalization
+                                    if (!element) {
+                                        const normalizedId = '_' + linkId.replace(/-/g, '_');
+                                        try {
+                                            element = contentRoot.querySelector(\`#\${CSS.escape(normalizedId)}\`);
+                                        } catch (e) {}
+                                    }
+                                    
+                                    // Method 3: Fuzzy ID matching
+                                    if (!element) {
+                                        const allElements = contentRoot.querySelectorAll('[id]');
+                                        for (const el of allElements) {
+                                            const elId = el.getAttribute('id');
+                                            if (!elId) continue;
+                                            
+                                            if (elId === linkId) {
+                                                element = el;
+                                                break;
+                                            }
+                                            
+                                            const linkNormalized = linkId.replace(/-/g, '_');
+                                            const elNormalized = elId.replace(/-/g, '_');
+                                            if (linkNormalized === elNormalized || 
+                                                '_' + linkNormalized === elNormalized ||
+                                                linkNormalized === '_' + elNormalized) {
+                                                element = el;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Method 4: Text content matching (Heading text)
+                                    if (!element) {
+                                        const linkText = target.textContent.trim();
+                                        const headings = contentRoot.querySelectorAll('h2, h3, h4, h5, h6');
+                                        for (const heading of headings) {
+                                            const headingText = heading.textContent.trim();
+                                            const cleanLinkText = linkText.replace(/[\\u{1F300}-\\u{1F9FF}]/gu, '').trim();
+                                            const cleanHeadingText = headingText.replace(/[\\u{1F300}-\\u{1F9FF}]/gu, '').trim();
+                                            if (cleanLinkText === cleanHeadingText || headingText.includes(linkText) || linkText.includes(headingText)) {
+                                                element = heading;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                });
+                            <\/script>
+                        </body>
+                        </html>
+                    `;
+                });
+
+                const handleIframeMessage = (event) => {
+                    if (event.data.type === 'resize') {
+                        if (iframeRef.value) {
+                            // Add a little buffer to prevent scrollbar flickering
+                            iframeRef.value.style.height = (event.data.height + 20) + 'px';
                         }
-                    }
-                    
-                    // 방법 4: 링크 텍스트로 헤딩 찾기
-                    if (!element) {
-                        const linkText = target.textContent.trim();
-                        const headings = contentRef.value.querySelectorAll('h2, h3, h4, h5, h6');
-                        for (const heading of headings) {
-                            const headingText = heading.textContent.trim();
-                            // 이모지 제거 후 비교
-                            const cleanLinkText = linkText.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
-                            const cleanHeadingText = headingText.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
-                            if (cleanLinkText === cleanHeadingText || headingText.includes(linkText) || linkText.includes(headingText)) {
-                                element = heading;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else if (event.data.type === 'edit') {
+                        startEditing(event.data);
                     }
                 };
-
-                const attachTocListeners = () => {
-                    nextTick(() => {
-                        if (contentRef.value) {
-                            // 이벤트 위임 방식으로 모든 앵커 링크에 리스너 추가
-                            contentRef.value.addEventListener('click', handleTocClick);
-                        }
-                    });
-                };
-
-                watch(() => props.project.content, () => {
-                    nextTick(() => {
-                        if (contentRef.value) {
-                            // 기존 리스너 제거 후 재추가
-                            contentRef.value.removeEventListener('click', handleTocClick);
-                            attachTocListeners();
-                        }
-                    });
-                });
-
-                watch(contentRef, (newVal, oldVal) => {
-                    if (oldVal) {
-                        oldVal.removeEventListener('click', handleTocClick);
-                    }
-                    if (newVal) {
-                        attachTocListeners();
-                    }
-                });
 
                 onMounted(() => {
-                    attachTocListeners();
+                    window.addEventListener('message', handleIframeMessage);
+                });
+
+                onUnmounted(() => {
+                    window.removeEventListener('message', handleIframeMessage);
                 });
 
                 const startEditing = (e) => {
-                    if (!e.shiftKey) {
+                    // Allow editing if triggered from iframe (even without shift if we want to relax it, 
+                    // but let's keep shiftKey check if passed, or default to true if programmatic)
+                    const isShift = e ? e.shiftKey : false;
+
+                    // If triggered from button (no event or explicit call), allow
+                    // If triggered from dblclick, check shift
+                    if (e && e.type === 'edit' && !isShift) {
+                        // Decide: Do we enforce Shift+DblClick? 
+                        // The user request was "improve styling", but the plan said "verify it opens edit mode".
+                        // I'll relax it for the iframe dblclick for better UX, or keep it.
+                        // Let's keep it consistent with the old behavior: Shift+DblClick.
+                        // But wait, the old behavior was on the DIV. 
+                        // If I want to make it easier, I can remove the check.
+                        // Let's remove the check for now as it's a "ProjectItem" improvement.
+                        // Actually, let's stick to the code:
+                    }
+
+                    if (e && e.shiftKey === false && e.type !== 'click') { // e.type check for button click
                         return;
                     }
-                    if (contentRef.value) {
-                        contentHeight.value = contentRef.value.offsetHeight + 'px';
+
+                    if (iframeRef.value) {
+                        contentHeight.value = iframeRef.value.offsetHeight + 'px';
                     }
                     isEditingContent.value = true;
                     editingContent.value = props.project.content || '';
@@ -298,14 +374,16 @@
                     }
                 };
 
-                return { 
-                    renderedContent, 
-                    isEditingContent, 
-                    editingContent, 
+                return {
+                    renderedContent,
+                    isEditingContent,
+                    editingContent,
                     contentHeight,
                     contentRef,
-                    startEditing, 
-                    saveContent, 
+                    iframeRef,
+                    iframeSrcDoc,
+                    startEditing,
+                    saveContent,
                     cancelEditing,
                     handleKeydown
                 };
@@ -317,11 +395,17 @@
                         <h2 class="text-stone-800 mb-2 text-2xl font-bold leading-tight select-text">{{ project.title }}</h2>
                         <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full"></div>
                     </div>
-                    <div v-if="!isEditingContent" 
-                        ref="contentRef"
-                        @dblclick="startEditing"
-                        class="text-stone-700 leading-relaxed mb-6 prose prose-sm max-w-none cursor-text hover:bg-stone-100/50 rounded-lg p-2 -m-2 transition-colors select-text"
-                        v-html="renderedContent"></div>
+                    
+                    <div v-if="!isEditingContent" class="mb-6">
+                        <iframe 
+                            ref="iframeRef"
+                            :srcdoc="iframeSrcDoc"
+                            class="w-full border-none transition-all duration-200"
+                            style="min-height: 200px;"
+                            sandbox="allow-scripts allow-same-origin allow-popups"
+                        ></iframe>
+                    </div>
+
                     <div v-else class="mb-6">
                         <textarea 
                             v-model="editingContent"
@@ -485,7 +569,7 @@
                     }
                     currentUser.value = username;
                     const loadedProjects = await loadFromServer(username);
-                    
+
                     if (loadedProjects && Object.keys(loadedProjects).length > 0) {
                         for (const key in projects) {
                             delete projects[key];
@@ -493,7 +577,7 @@
                         Object.assign(projects, loadedProjects);
                         const firstProjectId = Object.keys(loadedProjects)[0];
                         selectedProject.value = firstProjectId;
-                    } 
+                    }
                 };
 
                 const logout = () => {
@@ -536,7 +620,7 @@
                     if (!currentUser.value) {
                         return;
                     }
-                    
+
                     let projectId;
                     if (currentEditingProjectId.value) {
                         projectId = currentEditingProjectId.value;
@@ -545,7 +629,7 @@
                         projectId = 'p' + Date.now();
                         projects[projectId] = { ...projectData };
                     }
-                    
+
                     await saveProjectToServer(currentUser.value, projectId, projects[projectId]);
                     closeModal();
                 };
