@@ -142,7 +142,7 @@
             },
             emits: ['edit', 'delete', 'update'],
             setup(props, { emit }) {
-                const { ref, nextTick } = Vue;
+                const { ref, nextTick, onMounted, watch } = Vue;
                 const isEditingContent = ref(false);
                 const editingContent = ref('');
                 const contentHeight = ref('auto');
@@ -154,6 +154,104 @@
                         safe: 'safe', 
                         attributes: { showtitle: false } 
                     });
+                });
+
+                const handleTocClick = (e) => {
+                    e.preventDefault();
+                    const target = e.target.closest('a[href^="#"]');
+                    if (!target || !contentRef.value) return;
+                    
+                    const href = target.getAttribute('href');
+                    if (!href || !href.startsWith('#')) return;
+                    
+                    const linkId = decodeURIComponent(href.substring(1));
+                    
+                    // 방법 1: 직접 ID로 찾기
+                    let element = contentRef.value.querySelector(`#${CSS.escape(linkId)}`);
+                    
+                    // 방법 2: AsciiDoc ID 변환 규칙 적용
+                    // 링크: "기본-게임플레이-사운드" -> ID: "_기본_게임플레이_사운드"
+                    if (!element) {
+                        const normalizedId = '_' + linkId.replace(/-/g, '_');
+                        element = contentRef.value.querySelector(`#${CSS.escape(normalizedId)}`);
+                    }
+                    
+                    // 방법 3: 모든 ID를 순회하며 매칭
+                    if (!element) {
+                        const allElements = contentRef.value.querySelectorAll('[id]');
+                        for (const el of allElements) {
+                            const elId = el.getAttribute('id');
+                            if (!elId) continue;
+                            
+                            // 정확히 일치
+                            if (elId === linkId) {
+                                element = el;
+                                break;
+                            }
+                            
+                            // 하이픈/언더스코어 변환 후 비교
+                            const linkNormalized = linkId.replace(/-/g, '_');
+                            const elNormalized = elId.replace(/-/g, '_');
+                            if (linkNormalized === elNormalized || 
+                                '_' + linkNormalized === elNormalized ||
+                                linkNormalized === '_' + elNormalized) {
+                                element = el;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 방법 4: 링크 텍스트로 헤딩 찾기
+                    if (!element) {
+                        const linkText = target.textContent.trim();
+                        const headings = contentRef.value.querySelectorAll('h2, h3, h4, h5, h6');
+                        for (const heading of headings) {
+                            const headingText = heading.textContent.trim();
+                            // 이모지 제거 후 비교
+                            const cleanLinkText = linkText.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+                            const cleanHeadingText = headingText.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+                            if (cleanLinkText === cleanHeadingText || headingText.includes(linkText) || linkText.includes(headingText)) {
+                                element = heading;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                };
+
+                const attachTocListeners = () => {
+                    nextTick(() => {
+                        if (contentRef.value) {
+                            // 이벤트 위임 방식으로 모든 앵커 링크에 리스너 추가
+                            contentRef.value.addEventListener('click', handleTocClick);
+                        }
+                    });
+                };
+
+                watch(() => props.project.content, () => {
+                    nextTick(() => {
+                        if (contentRef.value) {
+                            // 기존 리스너 제거 후 재추가
+                            contentRef.value.removeEventListener('click', handleTocClick);
+                            attachTocListeners();
+                        }
+                    });
+                });
+
+                watch(contentRef, (newVal, oldVal) => {
+                    if (oldVal) {
+                        oldVal.removeEventListener('click', handleTocClick);
+                    }
+                    if (newVal) {
+                        attachTocListeners();
+                    }
+                });
+
+                onMounted(() => {
+                    attachTocListeners();
                 });
 
                 const startEditing = (e) => {
