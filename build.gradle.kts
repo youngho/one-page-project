@@ -48,7 +48,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.6")
 // https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
 }
 
 flyway {
