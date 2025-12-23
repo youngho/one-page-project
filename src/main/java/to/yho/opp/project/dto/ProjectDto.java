@@ -9,6 +9,5 @@ public class ProjectDto {
     private String projectId;
     private String title;
     private String content;
-    private List<String> desc;
+    private List<String> description;
 }
-

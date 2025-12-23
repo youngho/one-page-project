@@ -19,7 +19,7 @@ public class Project {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column(name = "project_id", nullable = false)
     private String projectId;
 
     @Column(nullable = false)
@@ -29,9 +29,9 @@ public class Project {
     private String content;
 
     @Column(columnDefinition = "TEXT")
-    private String desc;
+    private String description;
 
-      @Column(name = "created_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
@@ -48,4 +48,3 @@ public class Project {
         updatedAt = LocalDateTime.now();
     }
 }
-

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-//    private final ObjectMapper objectMapper;
+    // private final ObjectMapper objectMapper;
 
     public List<ProjectDto> getUserProjects(String username) {
         return projectRepository.findByUsername(username)
@@ -45,7 +45,7 @@ public class ProjectService {
         project.setProjectId(projectDto.getProjectId());
         project.setTitle(projectDto.getTitle());
         project.setContent(projectDto.getContent());
-//        project.setDesc(toJson(projectDto.getDesc()));
+        // project.setDescription(toJson(projectDto.getDescription()));
 
         Project saved = projectRepository.save(project);
         return toDto(saved);
@@ -61,7 +61,7 @@ public class ProjectService {
         dto.setProjectId(project.getProjectId());
         dto.setTitle(project.getTitle());
         dto.setContent(project.getContent());
-//        dto.setDesc(fromJson(project.getDesc()));
+        // dto.setDescription(fromJson(project.getDescription()));
         return dto;
     }
 
@@ -71,10 +71,8 @@ public class ProjectService {
         project.setProjectId(dto.getProjectId());
         project.setTitle(dto.getTitle());
         project.setContent(dto.getContent());
-//        project.setDesc(toJson(dto.getDesc()));
+        // project.setDescription(toJson(dto.getDescription()));
         return project;
     }
 
-
 }
-

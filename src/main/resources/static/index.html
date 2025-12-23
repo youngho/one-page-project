@@ -419,7 +419,7 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-6">
-                        <span v-for="descItem in project.desc" 
+                        <span v-for="descItem in project.description" 
                             :key="descItem" 
                             class="inline-block bg-stone-100 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 border border-stone-300 select-text">
                             {{ descItem }}
@@ -445,16 +445,16 @@
                 const form = reactive({
                     title: props.project?.title || '',
                     content: props.project?.content || '',
-                    desc: props.project?.desc?.join(', ') || ''
+                    description: props.project?.description?.join(', ') || ''
                 });
 
                 const handleSubmit = (e) => {
                     e.preventDefault();
-                    const desc = form.desc.split(',').map(t => t.trim()).filter(t => t);
+                    const description = form.description.split(',').map(t => t.trim()).filter(t => t);
                     emit('save', {
                         title: form.title,
                         content: form.content,
-                        desc
+                        description
                     });
                 };
 
@@ -487,7 +487,7 @@
                             <div class="mb-6">
                                 <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
                                 <input type="text" 
-                                    v-model="form.desc" 
+                                    v-model="form.description" 
                                     placeholder="프로젝트 설명을 입력하세요 (AsciiDoc 형식 지원)"
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
@@ -527,6 +527,7 @@
                 const usernameInput = ref('');
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
+                // const API_BASE_URL = 'http://158.179.161.203:8080/api/projects';
                 const API_BASE_URL = 'http://localhost:8080/api/projects';
 
                 const editingProject = computed(() => {
