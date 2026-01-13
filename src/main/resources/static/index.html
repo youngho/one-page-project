@@ -448,6 +448,20 @@
                     description: props.project?.description?.join(', ') || ''
                 });
 
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        emit('close');
+                    }
+                };
+
+                Vue.onMounted(() => {
+                    window.addEventListener('keydown', handleKeydown);
+                });
+
+                Vue.onUnmounted(() => {
+                    window.removeEventListener('keydown', handleKeydown);
+                });
+
                 const handleSubmit = (e) => {
                     e.preventDefault();
                     const description = form.description.split(',').map(t => t.trim()).filter(t => t);
@@ -461,37 +475,36 @@
                 return { form, handleSubmit };
             },
             template: `
-                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 animate-fade-in"
-                    @click.self="$emit('close')">
-                    <div class="glass rounded-3xl p-8 w-full max-w-lg shadow-2xl border border-white/20 animate-fade-in">
-                        <div class="mb-6">
+                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 animate-fade-in">
+                    <div class="glass rounded-3xl p-8 w-[95vw] h-[90vh] flex flex-col shadow-2xl border border-white/20 animate-fade-in">
+                        <div class="mb-6 flex-none">
                             <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
                                 {{ isEditing ? '프로젝트 편집' : '새 프로젝트 추가' }}
                             </h2>
                             <div class="h-1 w-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></div>
                         </div>
-                        <form @submit="handleSubmit">
-                            <div class="mb-5">
+                        <form @submit="handleSubmit" class="flex-1 flex flex-col min-h-0">
+                            <div class="mb-5 flex-none">
                                 <label class="block mb-2 text-sm font-semibold text-gray-700">제목 (이모지 포함)</label>
                                 <input type="text" 
                                     v-model="form.title" 
                                     required
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
-                            <div class="mb-5">
+                            <div class="mb-5 flex-1 flex flex-col min-h-0">
                                 <label class="block mb-2 text-sm font-semibold text-gray-700">내용</label>
                                 <textarea v-model="form.content" 
                                     required
-                                    class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm resize-y min-h-24 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"></textarea>
+                                    class="w-full flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"></textarea>
                             </div>
-                            <div class="mb-6">
-                                <label class="block mb-2 text-sm font-semibold text-gray-700">설명</label>
+                            <div class="mb-6 flex-none">
+                                <label class="block mb-2 text-sm font-semibold text-gray-700">설명 (쉼표로 구분)</label>
                                 <input type="text" 
                                     v-model="form.description" 
-                                    placeholder="프로젝트 설명을 입력하세요 (AsciiDoc 형식 지원)"
+                                    placeholder="예: Java, Spring Boot, Vue.js"
                                     class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl font-sans text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             </div>
-                            <div class="flex gap-3 mt-6">
+                            <div class="flex gap-3 flex-none">
                                 <button type="submit"
                                     class="flex-1 py-3.5 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700">
                                     저장
@@ -501,12 +514,10 @@
                                     class="flex-1 py-3.5 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-gray-100 text-gray-700 hover:bg-gray-200">
                                     취소
                                 </button>
-                            </div>
-                            <div v-if="isEditing" class="mt-4">
-                                <button type="button"
+                                <button v-if="isEditing" type="button"
                                     @click="$emit('delete')"
-                                    class="w-full py-3 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
-                                    🗑️ 프로젝트 삭제
+                                    class="flex-1 py-3 border-none rounded-xl cursor-pointer text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
+                                    🗑️ 삭제
                                 </button>
                             </div>
                         </form>
@@ -527,8 +538,8 @@
                 const usernameInput = ref('');
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
-                // const API_BASE_URL = 'http://158.179.161.203:8080/api/projects';
-                const API_BASE_URL = 'http://localhost:8080/api/projects';
+                const API_BASE_URL = 'http://158.179.161.203:8080/api/projects';
+                // const API_BASE_URL = 'http://localhost:8080/api/projects';
 
                 const editingProject = computed(() => {
                     if (!currentEditingProjectId.value) return null;
