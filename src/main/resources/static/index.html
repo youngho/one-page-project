@@ -380,14 +380,91 @@
                     else if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
                 };
 
+                // ── GitHub 커밋 ──
+                const parseGithubRawUrl = (url) => {
+                    try {
+                        const u = new URL(url || '');
+                        if (u.hostname !== 'raw.githubusercontent.com') return null;
+                        const parts = u.pathname.slice(1).split('/');
+                        const owner = parts[0], repo = parts[1];
+                        let branch, filePath;
+                        if (parts[2] === 'refs' && parts[3] === 'heads') {
+                            branch = parts[4]; filePath = parts.slice(5).join('/');
+                        } else {
+                            branch = parts[2]; filePath = parts.slice(3).join('/');
+                        }
+                        return (owner && repo && branch && filePath) ? { owner, repo, branch, filePath } : null;
+                    } catch { return null; }
+                };
+
+                const isGithubUrl = computed(() => !!parseGithubRawUrl(props.project?.url));
+                const showGithubModal = ref(false);
+                const githubPat = ref(localStorage.getItem('opp_github_pat') || '');
+                const githubCommitMsg = ref('Update content');
+                const isCommitting = ref(false);
+                const commitError = ref('');
+                const commitSuccess = ref(false);
+
+                const openGithubModal = () => {
+                    commitError.value = '';
+                    commitSuccess.value = false;
+                    showGithubModal.value = true;
+                };
+
+                const commitToGithub = async () => {
+                    const parsed = parseGithubRawUrl(props.project?.url);
+                    if (!parsed || !githubPat.value) return;
+                    isCommitting.value = true;
+                    commitError.value = '';
+                    commitSuccess.value = false;
+                    try {
+                        const { owner, repo, branch, filePath } = parsed;
+                        const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+                        const headers = {
+                            'Authorization': `token ${githubPat.value}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        };
+                        const getRes = await fetch(`${apiBase}?ref=${branch}`, { headers });
+                        const fileData = await getRes.json();
+                        if (!getRes.ok) throw new Error(fileData.message || 'SHA 조회 실패');
+
+                        const bytes = new TextEncoder().encode(editingContent.value);
+                        const b64 = btoa(Array.from(bytes).map(b => String.fromCharCode(b)).join(''));
+                        const putRes = await fetch(apiBase, {
+                            method: 'PUT', headers,
+                            body: JSON.stringify({
+                                message: githubCommitMsg.value || 'Update content',
+                                content: b64,
+                                sha: fileData.sha,
+                                branch
+                            })
+                        });
+                        const putData = await putRes.json();
+                        if (!putRes.ok) throw new Error(putData.message || '커밋 실패');
+
+                        localStorage.setItem('opp_github_pat', githubPat.value);
+                        urlContent.value = editingContent.value;
+                        commitSuccess.value = true;
+                        setTimeout(() => { showGithubModal.value = false; isEditingContent.value = false; commitSuccess.value = false; }, 1200);
+                    } catch (e) {
+                        commitError.value = e.message;
+                    } finally {
+                        isCommitting.value = false;
+                    }
+                };
+
                 return {
                     isEditingContent, editingContent, tocVisible,
                     selectedSectionId, selectedSubSectionId,
                     sections, tocItems, currentSection, currentSubSection,
                     renderedContent, livePreviewSrcDoc,
                     isLoadingUrl, urlError,
+                    isGithubUrl, showGithubModal, githubPat, githubCommitMsg,
+                    isCommitting, commitError, commitSuccess,
                     selectSection, selectSubSection, navigateTo,
-                    startEditing, saveContent, cancelEditing, handleKeydown
+                    startEditing, saveContent, cancelEditing, handleKeydown,
+                    openGithubModal, commitToGithub
                 };
             },
             template: `
@@ -420,6 +497,10 @@
                             </template>
                             <template v-else>
                                 <span class="text-xs text-stone-400 hidden sm:inline">Ctrl+Enter 저장 · ESC 취소</span>
+                                <button v-if="isGithubUrl" @click="openGithubModal"
+                                    class="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg text-xs font-semibold hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg transition-all">
+                                    ⬆ GitHub 커밋
+                                </button>
                                 <button @click="saveContent"
                                     class="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-semibold hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg transition-all">
                                     💾 저장
@@ -559,6 +640,55 @@
                                   class="inline-block bg-stone-100 px-3 py-1 rounded-full text-xs font-medium text-stone-600 select-text">
                                 {{ descItem }}
                             </span>
+                        </div>
+                    </div>
+
+                    <!-- GitHub 커밋 모달 -->
+                    <div v-if="showGithubModal"
+                         class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
+                         @click.self="showGithubModal = false">
+                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-base font-bold text-gray-800">GitHub 커밋</h3>
+                                <button @click="showGithubModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-xs font-semibold text-gray-600">커밋 메시지</label>
+                                <input type="text" v-model="githubCommitMsg"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                    placeholder="Update content">
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-xs font-semibold text-gray-600">
+                                    GitHub Personal Access Token
+                                    <span class="font-normal text-gray-400 ml-1">(브라우저에 저장됨)</span>
+                                </label>
+                                <input type="password" v-model="githubPat"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                    placeholder="ghp_xxxxxxxxxxxx">
+                            </div>
+                            <div v-if="commitError" class="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{{ commitError }}</div>
+                            <div v-if="commitSuccess" class="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                커밋 성공!
+                            </div>
+                            <div class="flex gap-2 pt-1">
+                                <button @click="commitToGithub" :disabled="isCommitting || !githubPat"
+                                    :class="['flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all',
+                                             isCommitting || !githubPat
+                                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                 : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg']">
+                                    <span v-if="isCommitting" class="flex items-center justify-center gap-2">
+                                        <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                        커밋 중…
+                                    </span>
+                                    <span v-else>⬆ 커밋 & 푸시</span>
+                                </button>
+                                <button @click="showGithubModal = false"
+                                    class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-all">
+                                    취소
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
