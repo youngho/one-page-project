@@ -23,23 +23,24 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew clean build -x test
+        run: ./gradlew clean bootWar -x test
 
       - name: Verify WAR artifact
         run: |
           set -euo pipefail
-          WAR_COUNT=$(find build/libs -maxdepth 1 -name '*.war' -type f | wc -l)
-          if [ "$WAR_COUNT" -eq 0 ]; then
-            echo "::error::No WAR file found in build/libs"
+          # war 플러그인이 함께 있으면 *-plain.war 도 생성됨. 외부 Tomcat용은 bootWar 산출물만 사용.
+          mapfile -t WAR_FILES < <(find build/libs -maxdepth 1 -name '*.war' ! -name '*-plain.war' -type f)
+          if [ "${#WAR_FILES[@]}" -eq 0 ]; then
+            echo "::error::No deployable WAR found in build/libs"
             ls -la build/libs || true
             exit 1
           fi
-          if [ "$WAR_COUNT" -gt 1 ]; then
-            echo "::error::Multiple WAR files found in build/libs"
-            find build/libs -maxdepth 1 -name '*.war' -type f
+          if [ "${#WAR_FILES[@]}" -gt 1 ]; then
+            echo "::error::Multiple deployable WAR files found in build/libs"
+            printf '%s\n' "${WAR_FILES[@]}"
             exit 1
           fi
-          WAR_FILE=$(find build/libs -maxdepth 1 -name '*.war' -type f -print -quit)
+          WAR_FILE="${WAR_FILES[0]}"
           echo "WAR_FILE=$WAR_FILE" >> "$GITHUB_ENV"
           mkdir -p deploy
           cp "$WAR_FILE" deploy/ROOT.war
