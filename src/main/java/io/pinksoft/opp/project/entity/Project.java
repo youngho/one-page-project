@@ -31,6 +31,9 @@ public class Project {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 500)
+    private String url;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

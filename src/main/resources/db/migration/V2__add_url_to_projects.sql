@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN url VARCHAR(500) NULL AFTER description;

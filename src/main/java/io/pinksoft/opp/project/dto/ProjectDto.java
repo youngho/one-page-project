@@ -10,4 +10,5 @@ public class ProjectDto {
     private String title;
     private String content;
     private List<String> description;
+    private String url;
 }

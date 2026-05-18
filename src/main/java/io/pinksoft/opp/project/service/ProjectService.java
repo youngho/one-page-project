@@ -51,6 +51,7 @@ public class ProjectService {
                     project.setTitle(dto.getTitle());
                     project.setContent(dto.getContent());
                     project.setDescription(toJson(dto.getDescription()));
+                    project.setUrl(dto.getUrl());
                     return project;
                 })
                 .collect(Collectors.toList());
@@ -68,6 +69,7 @@ public class ProjectService {
         project.setTitle(projectDto.getTitle());
         project.setContent(projectDto.getContent());
         project.setDescription(toJson(projectDto.getDescription()));
+        project.setUrl(projectDto.getUrl());
 
         Project saved = projectRepository.save(project);
         return toDto(saved);
@@ -84,6 +86,7 @@ public class ProjectService {
         dto.setTitle(project.getTitle());
         dto.setContent(project.getContent());
         dto.setDescription(fromJson(project.getDescription()));
+        dto.setUrl(project.getUrl());
         return dto;
     }
 
