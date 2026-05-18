@@ -12,7 +12,7 @@ plugins {
     id("org.flywaydb.flyway") version "11.18.0"
 }
 
-group = "to.yho"
+group = "io.pinksoft"
 version = "0.0.1-SNAPSHOT"
 description = "프로젝트의 모든 핵심 내용을 한 페이지로 요약"
 

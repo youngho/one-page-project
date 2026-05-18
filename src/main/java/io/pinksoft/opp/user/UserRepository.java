@@ -2,5 +2,5 @@ package io.pinksoft.opp.user;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends JpaRepository<UserVo, Integer> {
+public interface UserRepository extends JpaRepository<User, Integer> {
 }

@@ -1,5 +1,8 @@
 package io.pinksoft.opp.project.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,6 +11,8 @@ import io.pinksoft.opp.project.entity.Project;
 import io.pinksoft.opp.project.repository.ProjectRepository;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -15,7 +20,7 @@ import java.util.stream.Collectors;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-    // private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     public List<ProjectDto> getUserProjects(String username) {
         return projectRepository.findByUsername(username)
@@ -26,11 +31,28 @@ public class ProjectService {
 
     @Transactional
     public void saveUserProjects(String username, List<ProjectDto> projectDtos) {
-        List<Project> existing = projectRepository.findByUsername(username);
-        projectRepository.deleteAll(existing);
+        Map<String, Project> existing = projectRepository.findByUsername(username)
+                .stream()
+                .collect(Collectors.toMap(Project::getProjectId, p -> p));
+
+        Set<String> incomingIds = projectDtos.stream()
+                .map(ProjectDto::getProjectId)
+                .collect(Collectors.toSet());
+
+        existing.values().stream()
+                .filter(p -> !incomingIds.contains(p.getProjectId()))
+                .forEach(projectRepository::delete);
 
         List<Project> toSave = projectDtos.stream()
-                .map(dto -> toEntity(username, dto))
+                .map(dto -> {
+                    Project project = existing.getOrDefault(dto.getProjectId(), new Project());
+                    project.setUsername(username);
+                    project.setProjectId(dto.getProjectId());
+                    project.setTitle(dto.getTitle());
+                    project.setContent(dto.getContent());
+                    project.setDescription(toJson(dto.getDescription()));
+                    return project;
+                })
                 .collect(Collectors.toList());
 
         projectRepository.saveAll(toSave);
@@ -45,7 +67,7 @@ public class ProjectService {
         project.setProjectId(projectDto.getProjectId());
         project.setTitle(projectDto.getTitle());
         project.setContent(projectDto.getContent());
-        // project.setDescription(toJson(projectDto.getDescription()));
+        project.setDescription(toJson(projectDto.getDescription()));
 
         Project saved = projectRepository.save(project);
         return toDto(saved);
@@ -61,18 +83,25 @@ public class ProjectService {
         dto.setProjectId(project.getProjectId());
         dto.setTitle(project.getTitle());
         dto.setContent(project.getContent());
-        // dto.setDescription(fromJson(project.getDescription()));
+        dto.setDescription(fromJson(project.getDescription()));
         return dto;
     }
 
-    private Project toEntity(String username, ProjectDto dto) {
-        Project project = new Project();
-        project.setUsername(username);
-        project.setProjectId(dto.getProjectId());
-        project.setTitle(dto.getTitle());
-        project.setContent(dto.getContent());
-        // project.setDescription(toJson(dto.getDescription()));
-        return project;
+    private String toJson(List<String> list) {
+        if (list == null || list.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(list);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
+    private List<String> fromJson(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
 }

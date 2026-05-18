@@ -11,10 +11,16 @@ public class UserService {
     }
 
     public void saveUser(UserVo vo) {
-        repository.save(vo);
+        User user = new User();
+        user.setUserNm(vo.getUserNm());
+        repository.save(user);
     }
 
-    UserVo retrieve(UserVo vo) {
-        return repository.findById(vo.getUserNo()).orElseThrow(IllegalArgumentException::new);
+    public UserVo retrieve(UserVo vo) {
+        User user = repository.findById(vo.getUserNo()).orElseThrow(IllegalArgumentException::new);
+        UserVo result = new UserVo();
+        result.setUserNo(user.getUserNo());
+        result.setUserNm(user.getUserNm());
+        return result;
     }
 }
