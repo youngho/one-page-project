@@ -1,11 +1,11 @@
-package to.yho.opp.project.service;
+package io.pinksoft.opp.project.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import to.yho.opp.project.dto.ProjectDto;
-import to.yho.opp.project.entity.Project;
-import to.yho.opp.project.repository.ProjectRepository;
+import io.pinksoft.opp.project.dto.ProjectDto;
+import io.pinksoft.opp.project.entity.Project;
+import io.pinksoft.opp.project.repository.ProjectRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;

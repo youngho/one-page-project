@@ -1,4 +1,4 @@
-package to.yho.opp.user;
+package io.pinksoft.opp.user;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

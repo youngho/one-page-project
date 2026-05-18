@@ -1,4 +1,4 @@
-package to.yho.opp;
+package io.pinksoft.opp;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,10 +1,10 @@
-package to.yho.opp.project.controller;
+package io.pinksoft.opp.project.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import to.yho.opp.project.dto.ProjectDto;
-import to.yho.opp.project.service.ProjectService;
+import io.pinksoft.opp.project.dto.ProjectDto;
+import io.pinksoft.opp.project.service.ProjectService;
 
 import java.util.ArrayList;
 import java.util.HashMap;

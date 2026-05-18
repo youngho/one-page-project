@@ -1,4 +1,4 @@
-package to.yho.opp;
+package io.pinksoft.opp;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

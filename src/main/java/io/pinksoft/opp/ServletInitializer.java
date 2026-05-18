@@ -1,4 +1,4 @@
-package to.yho.opp;
+package io.pinksoft.opp;
 
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;

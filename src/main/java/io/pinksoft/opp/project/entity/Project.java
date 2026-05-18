@@ -1,4 +1,4 @@
-package to.yho.opp.project.entity;
+package io.pinksoft.opp.project.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

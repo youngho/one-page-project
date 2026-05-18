@@ -39,7 +39,7 @@ server:
 logging:
   level:
     root: INFO
-    to.yho.opp: DEBUG
+    io.pinksoft.opp: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:

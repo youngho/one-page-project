@@ -1,4 +1,4 @@
-package to.yho.opp.project.dto;
+package io.pinksoft.opp.project.dto;
 
 import lombok.Data;
 

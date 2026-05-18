@@ -1,4 +1,4 @@
-package to.yho.opp.user;
+package io.pinksoft.opp.user;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

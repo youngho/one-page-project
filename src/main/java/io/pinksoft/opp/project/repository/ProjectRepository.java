@@ -1,8 +1,8 @@
-package to.yho.opp.project.repository;
+package io.pinksoft.opp.project.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import to.yho.opp.project.entity.Project;
+import io.pinksoft.opp.project.entity.Project;
 
 import java.util.List;
 import java.util.Optional;

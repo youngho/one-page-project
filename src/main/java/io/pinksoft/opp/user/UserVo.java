@@ -1,4 +1,4 @@
-package to.yho.opp.user;
+package io.pinksoft.opp.user;
 
 import jakarta.persistence.*;
 import lombok.Getter;
