@@ -40,7 +40,7 @@
         }
 
         .animate-fade-in {
-            animation: fadeIn 0.3s ease-out;
+            animation: fadeIn 0.4s ease-out;
         }
 
         .animate-logo-float {
@@ -51,6 +51,10 @@
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+        }
+
+        .toolbar {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         select {
@@ -67,19 +71,38 @@
 <body
     class="m-0 p-0 overflow-x-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 font-sans min-h-screen">
     <div id="app">
-        <!-- Logo -->
-        <div v-if="Object.keys(projects).length === 0"
-            class="fixed inset-0 flex items-center justify-center z-[500] pointer-events-none">
-            <img src="images/logo.png" alt="OPP Logo" class="h-16 w-auto animate-logo-float opacity-60">
+        <!-- 로그인 전: 중앙 로그인 카드 -->
+        <div v-if="!currentUser"
+            class="fixed inset-0 flex flex-col items-center justify-center z-[1000] animate-fade-in">
+            <img src="images/logo.png" alt="OPP Logo" class="h-20 w-auto animate-logo-float mb-8 opacity-80">
+            <div class="glass rounded-2xl shadow-2xl p-8 w-[340px] border border-white/20">
+                <h1 class="text-lg font-bold text-gray-800 mb-1 text-center">One Page Project</h1>
+                <p class="text-xs text-gray-400 text-center mb-6">사용자명을 입력하여 시작하세요</p>
+                <div class="flex flex-col gap-3">
+                    <input type="text" v-model="usernameInput" placeholder="사용자명" @keyup.enter="loadUserProjects"
+                        autofocus
+                        class="w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                    <button @click="loadUserProjects"
+                        class="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        시작하기
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <!-- Project Selector & User Panel -->
-        <div class="fixed right-6 top-6 z-[1000] animate-fade-in">
-            <div class="glass rounded-2xl shadow-2xl p-5 min-w-[320px] border border-white/20">
-                <!-- Project Selector -->
-                <div class="flex items-center gap-2 mb-4">
+        <!-- 로그인 후: 상단 슬라이드 툴바 -->
+        <div v-if="currentUser">
+            <!-- 마우스 트리거 영역 (화면 최상단 투명 띠) -->
+            <div class="fixed top-0 left-0 right-0 h-3 z-[1001]"
+                @mouseenter="toolbarVisible = true"></div>
+            <!-- 툴바 본체 -->
+            <div class="toolbar fixed top-0 left-0 right-0 z-[1000]"
+                :class="toolbarVisible ? 'translate-y-0' : '-translate-y-full'"
+                @mouseleave="toolbarVisible = false">
+                <div class="glass shadow-2xl border-b border-white/20 px-5 py-3 flex items-center gap-3">
+                    <img src="images/logo.png" alt="OPP" class="h-7 w-auto opacity-60 mr-1 flex-none">
                     <select v-model="selectedProject" @change="projectClick(selectedProject)"
-                        class="flex-1 px-4 py-3 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
+                        class="flex-1 max-w-sm px-3 py-2 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-white">
                         <option v-for="(project, projectId) in projects" :key="projectId" :value="projectId">
                             {{ project.title }}
                         </option>
@@ -88,36 +111,20 @@
                         </option>
                     </select>
                     <button @click="projectAddModal"
-                        class="px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all whitespace-nowrap shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all whitespace-nowrap shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex-none">
                         <span class="text-xs opacity-90 mr-1">({{ totalProjectCount }})</span>+
                     </button>
-                </div>
-
-                <!-- User Panel -->
-                <div class="border-t border-white/20 pt-4">
-                    <!-- 로그인 전: 사용자명 입력 및 로드 -->
-                    <div v-if="!currentUser" class="flex items-center gap-2">
-                        <input type="text" v-model="usernameInput" placeholder="사용자명 입력" @keyup.enter="loadUserProjects"
-                            class="flex-1 px-4 py-2.5 bg-white/80 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                        <button @click="loadUserProjects"
-                            class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                            로드
-                        </button>
-                    </div>
-                    <!-- 로그인 후: 사용자 정보 및 로그아웃 -->
-                    <div v-else class="flex items-center gap-3">
-                        <div class="flex items-center gap-2">
-                            <div
-                                class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
-                                <span class="text-white text-sm">👤</span>
-                            </div>
-                            <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
+                    <div class="flex-1"></div>
+                    <div class="flex items-center gap-2 flex-none">
+                        <div class="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                            <span class="text-white text-xs">👤</span>
                         </div>
-                        <button @click="logout"
-                            class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg">
-                            로그아웃
-                        </button>
+                        <span class="text-sm font-semibold text-gray-700">{{ currentUser }}</span>
                     </div>
+                    <button @click="logout"
+                        class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-all shadow-md flex-none">
+                        로그아웃
+                    </button>
                 </div>
             </div>
         </div>
@@ -538,6 +545,7 @@
                 const usernameInput = ref('');
                 const isProjectModalOpen = ref(false);
                 const currentEditingProjectId = ref(null);
+                const toolbarVisible = ref(false);
                 const API_BASE_URL = 'http://158.179.161.203:8080/api/projects';
                 // const API_BASE_URL = 'http://localhost:8080/api/projects';
 
@@ -660,6 +668,7 @@
                     currentEditingProjectId,
                     editingProject,
                     totalProjectCount,
+                    toolbarVisible,
                     loadUserProjects,
                     projectAddModal,
                     projectEditModal,
