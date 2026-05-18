@@ -53,9 +53,12 @@ dependencies {
 }
 
 flyway {
-    url = "jdbc:mariadb://146.56.105.224:3306/OPP"
-    user = "onepagedb"
-    password = "20251126As!"
+    url = System.getenv("FLYWAY_URL")?.takeIf { it.isNotBlank() }
+        ?: "jdbc:mariadb://146.56.105.224:3306/OPP"
+    user = System.getenv("FLYWAY_USER")?.takeIf { it.isNotBlank() }
+        ?: "onepagedb"
+    password = System.getenv("FLYWAY_PASSWORD")?.takeIf { it.isNotBlank() }
+        ?: "20251126As!"
     baselineVersion = "0"
 }
 
