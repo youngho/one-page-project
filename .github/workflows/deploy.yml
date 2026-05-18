@@ -41,14 +41,8 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
-          # 1. 기존의 ROOT 디렉토리 및 WAR 백업/삭제 (충돌 방지)
+          sudo systemctl stop tomcat
           sudo rm -rf /opt/tomcat/latest/webapps/ROOT
-          
-          # 2. 톰캣 webapps 경로로 빌드된 WAR 파일 복사 (ROOT.war로 이름 변경하여 루트 경로에서 서비스)
           sudo cp /home/ubuntu/deploy/*.war /opt/tomcat/latest/webapps/ROOT.war
-          
-          # 3. 임시 배포 폴더 정리
           rm -rf /home/ubuntu/deploy
-          
-          # 4. (필요 시 주석 해제) 톰캣 서비스 재시작
-          # sudo systemctl restart tomcat
+          sudo systemctl start tomcat
