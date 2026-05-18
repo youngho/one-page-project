@@ -12,6 +12,7 @@
     <link rel="manifest" href="/site.webmanifest">
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/asciidoctor.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/css/asciidoctor.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
@@ -64,6 +65,21 @@
             opacity: 0;
             transform: translateX(-8px);
         }
+
+        .section-body-enter-active, .section-body-leave-active {
+            transition: opacity 0.15s ease;
+        }
+        .section-body-enter-from, .section-body-leave-to {
+            opacity: 0;
+        }
+
+        /* AsciiDoc 콘텐츠 스코프 */
+        .adoc { font-size: 0.875rem; line-height: 1.6; color: #3f3f3f; }
+        .adoc table.tableblock { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+        .adoc table.tableblock td, .adoc table.tableblock th { border: 1px solid #d6d3d1; padding: 0.4rem 0.6rem; }
+        .adoc .listingblock pre { background: #f5f5f4; border-radius: 6px; padding: 0.75rem; overflow-x: auto; font-size: 0.8rem; }
+        .adoc .paragraph { margin: 0.4rem 0; }
+        .adoc ul, .adoc ol { padding-left: 1.5rem; margin: 0.4rem 0; }
 
         select {
             appearance: none;
@@ -231,12 +247,12 @@
             props: { project: Object, projectId: String },
             emits: ['edit', 'delete', 'update'],
             setup(props, { emit }) {
-                const { ref, nextTick, onMounted, onUnmounted, computed } = Vue;
+                const { ref, nextTick, computed } = Vue;
                 const isEditingContent = ref(false);
                 const editingContent = ref('');
-                const iframeRef = ref(null);
                 const tocVisible = ref(true);
-                const activeSection = ref('');
+                const selectedSectionId = ref(null);
+                const selectedSubSectionId = ref(null);
 
                 const renderedContent = computed(() => {
                     if (!props.project.content) return '';
@@ -248,28 +264,71 @@
                     return asciidoctor.convert(editingContent.value, { safe: 'safe', attributes: { showtitle: false } });
                 });
 
-                const tocItems = computed(() => {
-                    if (!renderedContent.value) return [];
-                    const doc = new DOMParser().parseFromString(renderedContent.value, 'text/html');
-                    return Array.from(doc.querySelectorAll('h2, h3'))
-                        .filter(h => h.id)
-                        .map(h => ({ id: h.id, text: h.textContent.trim(), level: parseInt(h.tagName[1]) }));
-                });
-
-                const iframeSrcDoc = computed(() => buildIframeSrcDoc(renderedContent.value));
                 const livePreviewSrcDoc = computed(() => buildPreviewSrcDoc(liveRenderedContent.value));
 
-                const handleIframeMessage = (event) => {
-                    if (event.data.type === 'edit') startEditing();
-                    else if (event.data.type === 'active-section') activeSection.value = event.data.id;
+                const sections = computed(() => {
+                    if (!renderedContent.value) return [];
+                    const doc = new DOMParser().parseFromString(renderedContent.value, 'text/html');
+                    const sect1s = doc.querySelectorAll('.sect1');
+                    if (sect1s.length > 0) {
+                        return Array.from(sect1s).map(sect => {
+                            const h2 = sect.querySelector(':scope > h2');
+                            const body = sect.querySelector(':scope > .sectionbody');
+                            const bodyClone = body?.cloneNode(true);
+                            bodyClone?.querySelectorAll('.sect2').forEach(s => s.remove());
+                            const subsections = Array.from(sect.querySelectorAll(':scope > .sectionbody > .sect2')).map(sub => {
+                                const h3 = sub.querySelector(':scope > h3');
+                                const subClone = sub.cloneNode(true);
+                                subClone.querySelector('h3')?.remove();
+                                return { id: h3?.id || '', title: h3?.textContent?.trim() || '', content: subClone.innerHTML.trim() };
+                            });
+                            return { id: h2?.id || '', title: h2?.textContent?.trim() || '', preamble: bodyClone?.innerHTML.trim() || '', subsections };
+                        });
+                    }
+                    const result = [];
+                    let cur = null, curSub = null;
+                    for (const node of doc.body.children) {
+                        const tag = node.tagName?.toLowerCase();
+                        if (tag === 'h2') { cur = { id: node.id, title: node.textContent.trim(), preamble: '', subsections: [] }; curSub = null; result.push(cur); }
+                        else if (tag === 'h3' && cur) { curSub = { id: node.id, title: node.textContent.trim(), content: '' }; cur.subsections.push(curSub); }
+                        else if (curSub) curSub.content += node.outerHTML;
+                        else if (cur) cur.preamble += node.outerHTML;
+                    }
+                    return result;
+                });
+
+                const tocItems = computed(() =>
+                    sections.value.flatMap(s => [
+                        { id: s.id, text: s.title, level: 2 },
+                        ...s.subsections.map(sub => ({ id: sub.id, text: sub.title, level: 3 }))
+                    ])
+                );
+
+                const currentSection = computed(() =>
+                    sections.value.find(s => s.id === selectedSectionId.value) || null
+                );
+
+                const currentSubSection = computed(() =>
+                    currentSection.value?.subsections.find(s => s.id === selectedSubSectionId.value) || null
+                );
+
+                const selectSection = (id) => {
+                    selectedSectionId.value = id;
+                    selectedSubSectionId.value = null;
                 };
 
-                onMounted(() => window.addEventListener('message', handleIframeMessage));
-                onUnmounted(() => window.removeEventListener('message', handleIframeMessage));
+                const selectSubSection = (id) => {
+                    selectedSubSectionId.value = id;
+                };
 
-                const scrollToSection = (id) => {
-                    activeSection.value = id;
-                    iframeRef.value?.contentWindow?.postMessage({ type: 'scroll-to', id }, '*');
+                const navigateTo = (id, level) => {
+                    if (level === 2) {
+                        selectSection(id);
+                    } else {
+                        const parent = sections.value.find(s => s.subsections.some(sub => sub.id === id));
+                        if (parent) selectedSectionId.value = parent.id;
+                        selectSubSection(id);
+                    }
                 };
 
                 const startEditing = () => {
@@ -295,10 +354,12 @@
                 };
 
                 return {
-                    isEditingContent, editingContent, iframeRef,
-                    tocVisible, activeSection, tocItems,
-                    iframeSrcDoc, livePreviewSrcDoc,
-                    startEditing, saveContent, cancelEditing, handleKeydown, scrollToSection
+                    isEditingContent, editingContent, tocVisible,
+                    selectedSectionId, selectedSubSectionId,
+                    sections, tocItems, currentSection, currentSubSection,
+                    renderedContent, livePreviewSrcDoc,
+                    selectSection, selectSubSection, navigateTo,
+                    startEditing, saveContent, cancelEditing, handleKeydown
                 };
             },
             template: `
@@ -344,27 +405,92 @@
                     <!-- 콘텐츠 영역 -->
                     <div class="flex-1 overflow-hidden flex min-h-0 px-8 py-4 gap-4">
 
-                        <!-- 보기 모드 -->
+                        <!-- 보기 모드: 드릴다운 뷰 -->
                         <template v-if="!isEditingContent">
+                            <!-- TOC 사이드바 -->
                             <transition name="toc-slide">
                                 <div v-if="tocVisible && tocItems.length > 0"
                                      class="w-48 flex-none overflow-y-auto border-r border-stone-200 pr-4">
                                     <div class="text-xs font-semibold text-stone-400 mb-3 uppercase tracking-wider">목차</div>
                                     <ul class="space-y-0.5">
                                         <li v-for="item in tocItems" :key="item.id"
-                                            @click="scrollToSection(item.id)"
+                                            @click="navigateTo(item.id, item.level)"
                                             :class="['cursor-pointer rounded-lg px-2 py-1.5 transition-colors leading-snug',
                                                      item.level === 2 ? 'text-sm font-medium text-stone-700' : 'text-xs pl-4 text-stone-500',
-                                                     activeSection === item.id ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'hover:bg-stone-100']">
+                                                     (item.level === 2 && selectedSectionId === item.id && !selectedSubSectionId) ||
+                                                     (item.level === 3 && selectedSubSectionId === item.id)
+                                                         ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'hover:bg-stone-100']">
                                             {{ item.text }}
                                         </li>
                                     </ul>
                                 </div>
                             </transition>
-                            <div class="flex-1 overflow-hidden min-w-0">
-                                <iframe ref="iframeRef" :srcdoc="iframeSrcDoc"
-                                        class="w-full h-full border-none"
-                                        sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+
+                            <!-- 메인 콘텐츠 -->
+                            <div class="flex-1 overflow-y-auto min-w-0">
+
+                                <!-- 브레드크럼 -->
+                                <div v-if="currentSection" class="flex items-center gap-1.5 text-xs text-stone-400 mb-4 flex-wrap">
+                                    <button @click="selectedSectionId = null; selectedSubSectionId = null"
+                                            class="hover:text-indigo-600 transition-colors font-medium">전체</button>
+                                    <span>›</span>
+                                    <button @click="selectedSubSectionId = null"
+                                            :class="['transition-colors font-medium', currentSubSection ? 'hover:text-indigo-600' : 'text-stone-700 cursor-default']">
+                                        {{ currentSection.title }}
+                                    </button>
+                                    <template v-if="currentSubSection">
+                                        <span>›</span>
+                                        <span class="text-stone-700 font-medium">{{ currentSubSection.title }}</span>
+                                    </template>
+                                </div>
+
+                                <!-- 1단계: 전체 섹션 카드 목록 -->
+                                <div v-if="!currentSection" class="space-y-2">
+                                    <div v-for="section in sections" :key="section.id"
+                                         @click="selectSection(section.id)"
+                                         class="bg-white border border-stone-200 rounded-xl px-5 py-4 cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-semibold text-stone-800 group-hover:text-indigo-700 transition-colors">{{ section.title }}</span>
+                                            <span class="text-xs text-stone-400">{{ section.subsections.length }}개 항목 ›</span>
+                                        </div>
+                                        <div v-if="section.subsections.length > 0"
+                                             class="mt-2 flex flex-wrap gap-1.5">
+                                            <span v-for="sub in section.subsections.slice(0, 4)" :key="sub.id"
+                                                  class="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
+                                                {{ sub.title }}
+                                            </span>
+                                            <span v-if="section.subsections.length > 4" class="text-xs text-stone-400">+{{ section.subsections.length - 4 }}개</span>
+                                        </div>
+                                    </div>
+                                    <!-- 섹션 구조 없을 때 fallback -->
+                                    <div v-if="sections.length === 0 && project.content"
+                                         v-html="renderedContent" class="adoc px-2 py-1"></div>
+                                </div>
+
+                                <!-- 2단계: h2 선택 → 프리앰블 + h3 카드 목록 -->
+                                <div v-else-if="!currentSubSection">
+                                    <div v-if="currentSection.preamble"
+                                         v-html="currentSection.preamble"
+                                         class="adoc mb-4 p-4 bg-white border border-stone-200 rounded-xl"></div>
+                                    <div class="space-y-2">
+                                        <div v-for="sub in currentSection.subsections" :key="sub.id"
+                                             @click="selectSubSection(sub.id)"
+                                             class="bg-white border border-stone-200 rounded-xl px-5 py-4 cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group">
+                                            <div class="flex items-center justify-between">
+                                                <span class="font-medium text-stone-700 group-hover:text-indigo-700 transition-colors">{{ sub.title }}</span>
+                                                <span class="text-xs text-stone-400">보기 ›</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="currentSection.subsections.length === 0 && currentSection.preamble === ''"
+                                             class="text-sm text-stone-400 text-center py-8">내용이 없습니다.</div>
+                                    </div>
+                                </div>
+
+                                <!-- 3단계: h3 선택 → 내용 표시 -->
+                                <div v-else
+                                     v-html="currentSubSection.content"
+                                     class="adoc bg-white border border-stone-200 rounded-xl p-6"></div>
+
                             </div>
                         </template>
 
