@@ -3,6 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            const seg = location.pathname.split('/').filter(Boolean)[0];
+            if (seg && !seg.includes('.')) {
+                const base = document.createElement('base');
+                base.href = location.origin + '/' + seg + '/';
+                document.head.appendChild(base);
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
     <title>One Page Project</title>
@@ -1025,8 +1035,8 @@
 
                 const initGoogleSignIn = async () => {
                     await waitForGoogleLibrary();
-                    // redirect: COOP postMessage 없이 동작 (Console에 /opp/ 리디렉션 URI 등록 필요)
-                    const loginUri = `${window.location.origin}/opp/`;
+                    // redirect: Google이 credential을 POST로 전달 (정적 /opp/는 GET만 가능)
+                    const loginUri = `${SERVER_BASE}/auth/google/callback`;
                     google.accounts.id.initialize({
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
@@ -1059,8 +1069,18 @@
                 });
 
                 onMounted(async () => {
-                    const savedUser = localStorage.getItem('opp_user');
-                    if (savedUser) await applyLogin(savedUser);
+                    const params = new URLSearchParams(window.location.search);
+                    const authErr = params.get('auth_error');
+                    const loginFromRedirect = params.get('login');
+                    if (authErr) authError.value = decodeURIComponent(authErr);
+                    if (loginFromRedirect) {
+                        localStorage.setItem('opp_user', loginFromRedirect);
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        await applyLogin(loginFromRedirect);
+                    } else {
+                        const savedUser = localStorage.getItem('opp_user');
+                        if (savedUser) await applyLogin(savedUser);
+                    }
 
                     if (!googleClientId) return;
                     try {
