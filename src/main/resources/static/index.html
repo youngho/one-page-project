@@ -1028,8 +1028,7 @@
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
                         auto_select: false,
-                        cancel_on_tap_outside: true,
-                        use_fedcm_for_prompt: true
+                        cancel_on_tap_outside: true
                     });
                     await nextTick();
                     const btn = document.getElementById('google-signin-btn');
