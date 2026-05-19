@@ -53,7 +53,8 @@ public class AppUserController {
             return ResponseEntity.ok(Map.of("username", username));
         } catch (IllegalArgumentException | IllegalStateException e) {
             log.warn("Google login rejected: {}", e.toString());
-            return ResponseEntity.badRequest().body(ApiMessages.body(e.getMessage()));
+            return ResponseEntity.badRequest().body(
+                    ApiMessages.fromException(e, "유효하지 않은 Google 인증 정보입니다."));
         } catch (GeneralSecurityException | IOException e) {
             log.warn("Google token verification failed", e);
             return ResponseEntity.badRequest().body(ApiMessages.body("Google 토큰 검증에 실패했습니다."));

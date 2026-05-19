@@ -999,6 +999,7 @@
                         });
                         const data = await res.json().catch(() => ({}));
                         if (!res.ok) {
+                            console.error('Google login API:', res.status, data);
                             authError.value = data.message || 'Google 로그인에 실패했습니다.';
                             return;
                         }
@@ -1034,14 +1035,15 @@
 
                 const initGoogleSignIn = async () => {
                     await waitForGoogleLibrary();
-                    // popup: 리디렉션 URI 불필요 (승인된 JavaScript 원본만 사용)
+                    // redirect: popup postMessage(COOP 경고) 없이 서버 콜백에서 로그인 처리
+                    const loginUri = `${SERVER_BASE}/auth/google/callback`;
                     google.accounts.id.initialize({
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
-                        ux_mode: 'popup',
+                        ux_mode: 'redirect',
+                        login_uri: loginUri,
                         auto_select: false,
-                        cancel_on_tap_outside: true,
-                        use_fedcm_for_prompt: false
+                        cancel_on_tap_outside: true
                     });
                     await nextTick();
                     const btn = document.getElementById('google-signin-btn');

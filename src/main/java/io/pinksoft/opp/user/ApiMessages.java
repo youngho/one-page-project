@@ -10,4 +10,8 @@ final class ApiMessages {
         String safe = (message == null || message.isBlank()) ? "요청 처리에 실패했습니다." : message;
         return Map.of("message", safe);
     }
+
+    static Map<String, String> fromException(Exception e, String fallback) {
+        return body(e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage() : fallback);
+    }
 }
