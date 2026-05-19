@@ -1035,13 +1035,11 @@
 
                 const initGoogleSignIn = async () => {
                     await waitForGoogleLibrary();
-                    // redirect: Google이 credential을 POST로 전달 (정적 /opp/는 GET만 가능)
-                    const loginUri = `${SERVER_BASE}/auth/google/callback`;
+                    // popup: 리디렉션 URI 불필요 (승인된 JavaScript 원본만 사용)
                     google.accounts.id.initialize({
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
-                        ux_mode: 'redirect',
-                        login_uri: loginUri,
+                        ux_mode: 'popup',
                         auto_select: false,
                         cancel_on_tap_outside: true
                     });
