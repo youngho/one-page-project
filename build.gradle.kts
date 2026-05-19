@@ -50,7 +50,7 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.6")
 // https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
-    implementation("org.mindrot:jbcrypt:0.4")
+    implementation("org.springframework.security:spring-security-crypto")
 }
 
 flyway {
