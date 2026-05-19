@@ -40,8 +40,8 @@ jobs:
           WAR_FILE="${WAR_FILES[0]}"
           echo "WAR_FILE=$WAR_FILE" >> "$GITHUB_ENV"
           mkdir -p deploy
-          cp "$WAR_FILE" deploy/ROOT.war
-          ls -lh deploy/ROOT.war
+          cp "$WAR_FILE" deploy/opp.war
+          ls -lh deploy/opp.war
 
       - name: Transfer WAR to server via SCP
         uses: appleboy/scp-action@v1.0.0
@@ -49,7 +49,7 @@ jobs:
           host: ${{ secrets.PRD_SERVER_HOST }}
           username: ${{ secrets.PRD_SERVER_USER }}
           key: ${{ secrets.PRD_SERVER_SSH_KEY }}
-          source: deploy/ROOT.war
+          source: deploy/opp.war
           target: /home/ubuntu/deploy
           strip_components: 1
           overwrite: true
@@ -64,7 +64,7 @@ jobs:
             set -euo pipefail
 
             DEPLOY_DIR=/home/ubuntu/deploy
-            WAR_FILE="${DEPLOY_DIR}/ROOT.war"
+            WAR_FILE="${DEPLOY_DIR}/opp.war"
             TOMCAT_WEBAPPS=/opt/tomcat/latest/webapps
 
             if [ ! -f "$WAR_FILE" ]; then
@@ -76,8 +76,8 @@ jobs:
             echo "Deploying $(ls -lh "$WAR_FILE")"
 
             sudo systemctl stop tomcat
-            sudo rm -rf "${TOMCAT_WEBAPPS}/ROOT" "${TOMCAT_WEBAPPS}/ROOT.war"
-            sudo cp "$WAR_FILE" "${TOMCAT_WEBAPPS}/ROOT.war"
+            sudo rm -rf "${TOMCAT_WEBAPPS}/opp" "${TOMCAT_WEBAPPS}/opp.war"
+            sudo cp "$WAR_FILE" "${TOMCAT_WEBAPPS}/opp.war"
             rm -f "$WAR_FILE"
             sudo systemctl start tomcat
             sudo systemctl is-active --quiet tomcat
