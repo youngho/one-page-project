@@ -222,8 +222,11 @@
         const { createApp, ref, reactive, computed, nextTick, watch, onMounted } = Vue;
         const asciidoctor = Asciidoctor();
 
-        const SERVER_BASE = 'http://158.179.161.203:8080';
-        // const SERVER_BASE = 'http://localhost:8080';
+        const SERVER_BASE = (() => {
+            const { origin, pathname } = window.location;
+            const first = pathname.split('/').filter(Boolean)[0];
+            return (first && !first.includes('.')) ? `${origin}/${first}` : origin;
+        })();
         const PROXY_URL = `${SERVER_BASE}/api/proxy`;
 
         const buildIframeSrcDoc = (content) => {
