@@ -50,7 +50,7 @@ jobs:
           username: ${{ secrets.PRD_SERVER_USER }}
           key: ${{ secrets.PRD_SERVER_SSH_KEY }}
           source: deploy/opp.war
-          target: /home/ubuntu/deploy
+          target: /usr/share/tomcat/webapps
           strip_components: 1
           overwrite: true
 
