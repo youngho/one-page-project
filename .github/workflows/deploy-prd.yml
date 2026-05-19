@@ -63,23 +63,20 @@ jobs:
           script: |
             set -euo pipefail
 
-            DEPLOY_DIR=/home/ubuntu/deploy
-            WAR_FILE="${DEPLOY_DIR}/opp.war"
             TOMCAT_WEBAPPS=/usr/share/tomcat/webapps
+            WAR_FILE="${TOMCAT_WEBAPPS}/opp.war"
 
             if [ ! -f "$WAR_FILE" ]; then
               echo "ERROR: WAR not found at ${WAR_FILE}"
-              find "$DEPLOY_DIR" -type f 2>/dev/null || true
+              ls -la "$TOMCAT_WEBAPPS" || true
               exit 1
             fi
 
             echo "Deploying $(ls -lh "$WAR_FILE")"
 
-            #sudo systemctl stop tomcat
-            sudo rm -rf "${TOMCAT_WEBAPPS}/opp" "${TOMCAT_WEBAPPS}/opp.war"
-            sudo cp "$WAR_FILE" "${TOMCAT_WEBAPPS}/opp.war"
-            rm -f "$WAR_FILE"
-            #sudo systemctl start tomcat
-            #sudo systemctl is-active --quiet tomcat
+            sudo systemctl stop tomcat
+            sudo rm -rf "${TOMCAT_WEBAPPS}/opp"
+            sudo systemctl start tomcat
+            sudo systemctl is-active --quiet tomcat
 
             echo "Tomcat is running with new deployment"
