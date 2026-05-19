@@ -40,6 +40,7 @@ public class ProjectController {
             @PathVariable String username,
             @RequestBody Map<String, ProjectDto> projects
     ) {
+        projects.forEach((id, dto) -> dto.setProjectId(id));
         projectService.saveUserProjects(username, new ArrayList<>(projects.values()));
 
         Map<String, String> response = new HashMap<>();

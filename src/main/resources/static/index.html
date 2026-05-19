@@ -1000,7 +1000,11 @@
                             await nextTick();
                             const btn = document.getElementById('google-signin-btn');
                             if (btn) google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', width: 316, text: 'signin_with' });
-                            google.accounts.id.prompt();
+                            google.accounts.id.prompt((notification) => {
+                                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                                    // One Tap 미지원 환경 (미등록 도메인, FedCM 차단 등) — 버튼은 정상 작동
+                                }
+                            });
                         };
                         if (typeof google !== 'undefined') {
                             initGoogle();
