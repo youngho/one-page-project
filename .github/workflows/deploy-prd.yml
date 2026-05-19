@@ -65,7 +65,7 @@ jobs:
 
             DEPLOY_DIR=/home/ubuntu/deploy
             WAR_FILE="${DEPLOY_DIR}/opp.war"
-            TOMCAT_WEBAPPS=/opt/tomcat/latest/webapps
+            TOMCAT_WEBAPPS=/usr/share/tomcat/webapps
 
             if [ ! -f "$WAR_FILE" ]; then
               echo "ERROR: WAR not found at ${WAR_FILE}"
