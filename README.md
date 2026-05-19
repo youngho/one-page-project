@@ -1,5 +1,12 @@
 # [One Page Project 시스템 정의 (Definition)]
 
+## 운영·배포
+
+- **Google 로그인 / PRD / 방화벽**: [docs/google-login-deployment.md](docs/google-login-deployment.md)
+- Cursor Agent 규칙: `.cursor/rules/google-login-deployment.mdc`
+
+---
+
 One Page Project 시스템이란 복잡한 프로젝트의 핵심 정보를 단 한 페이지의 시각적 문서로 통합하여, 프로젝트의 기획부터 실행, 추적 및 공유에 이르는 전 과정을 직관적으로 관리하는 통합 프로젝트 관리 시스템입니다(복잡한 프로젝트의 모든 핵심 내용을 한 페이지로 요약한 문서시스템).
 
 ## 핵심 정의

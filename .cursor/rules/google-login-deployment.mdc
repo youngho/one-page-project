@@ -1,0 +1,66 @@
+---
+description: Google 로그인(GIS) 및 PRD 서버 배포·방화벽 트러블슈팅
+globs: src/main/java/io/pinksoft/opp/user/**,src/main/resources/static/index.html,docs/**
+alwaysApply: false
+---
+
+# Google 로그인 & PRD 배포
+
+## 아키텍처 (현재)
+
+- 프론트: Google Identity Services (GIS), `ux_mode: 'redirect'`, `login_uri: {SERVER_BASE}/auth/google/callback`
+- 서버: `GoogleAuthCallbackController` — Google이 credential을 **POST** (form-urlencoded)
+- `POST /opp/` 는 `GoogleRedirectPostFilter`가 credential POST 처리 (Console에 `/opp/`만 등록된 경우)
+- 토큰 검증: `GoogleTokenVerifier` — 라이브러리 → tokeninfo → (폴백) 로컬 JWT 클레임(aud/iss/exp)
+- 로그인 성공 시 `redirect:/?login={username}` → `index.html` onMounted가 localStorage 저장
+
+## Google Cloud Console (웹 클라이언트)
+
+| 항목 | 값 |
+|------|-----|
+| Client ID | `4835889241-...apps.googleusercontent.com` (application.yaml `google.client-id`) |
+| JavaScript 원본 | `https://www.pinksoft.io:8080`, `https://pinksoft.io:8080` |
+| 리디렉션 URI | `https://www.pinksoft.io:8080/opp/auth/google/callback`, `/opp/` (www·non-www 둘 다) |
+
+저장 후 **5분~몇 시간** 전파 지연 가능. `redirect_uri_mismatch` 시 Console 등록·전파·접속 URL(www) 확인.
+
+## PRD 서버
+
+- URL: `https://www.pinksoft.io:8080/opp/` (Tomcat context `/opp`)
+- 배포: GitHub Actions **Deploy to Tomcat(PRD)** (workflow_dispatch)
+- SSH: `ssh -i ~/.ssh/key_iwinv_a_PINK root@115.68.231.17`
+
+## iwinv 아웃바운드 (TOMCAT) — 필수
+
+| 프로토콜 | 포트 | 용도 |
+|----------|------|------|
+| TCP | 443 | Google API HTTPS |
+| **UDP** | **53** | DNS (없으면 `oauth2.googleapis.com` 해석 실패) |
+
+HTTPS만 열리고 DNS가 막히면 "Google 서버 연결 불가" / tokeninfo 타임아웃 발생.
+
+서버에서 확인:
+```bash
+python3 -c "import socket; print(socket.gethostbyname('oauth2.googleapis.com'))"
+curl -sS -m 5 -o /dev/null -w "%{http_code}\n" "https://oauth2.googleapis.com/tokeninfo?id_token=test"
+# 400 = 연결 OK
+```
+
+## 흔한 오류 (CORS 아님)
+
+| 증상 | 원인 | 조치 |
+|------|------|------|
+| COOP `postMessage` 경고 | GIS popup/iframe (브라우저) | redirect 모드 사용; 경고만 있고 로그인 되면 무시 가능 |
+| `redirect_uri_mismatch` | Console URI 미등록/전파 지연 | URI 추가·대기·www URL로 접속 |
+| `POST /opp/ 405` | 정적 페이지에 POST | callback 컨트롤러·필터 배포 확인 |
+| `GET /opp/ 405` | `@PostMapping("/")` 가 GET 차단 | 루트는 Filter만, Controller에 GET `/` 금지 |
+| API 500 `Map.of` NPE | `e.getMessage()` null | `ApiMessages.body()` 사용 |
+| Google 연결 불가 | **UDP 53** 차단 | iwinv Outbound UDP 53 추가 |
+
+## 코드 수정 시 주의
+
+- `login_uri`는 `${SERVER_BASE}/auth/google/callback` (하드코드 `/opp/` 지양)
+- `@PostMapping({"/", ""})` 와 GET 정적 `index.html` 충돌 금지
+- Client ID는 프론트·백엔드·Console 세 곳 일치
+
+상세: `docs/google-login-deployment.md`
