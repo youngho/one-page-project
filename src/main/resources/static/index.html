@@ -879,12 +879,22 @@
                     isProjectModalOpen.value = true;
                 };
 
-                const deleteProject = (id) => {
+                const deleteProject = async (id) => {
                     if (confirm('이 프로젝트를 삭제하시겠습니까?')) {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/${currentUser.value}/${id}`, {
+                                method: 'DELETE'
+                            });
+                            if (!response.ok) throw new Error('삭제 실패');
+                        } catch (e) {
+                            alert('프로젝트 삭제 중 오류가 발생했습니다: ' + e.message);
+                            return;
+                        }
                         delete projects[id];
                         if (selectedProject.value === id) {
-                            selectedProject.value = null;
+                            selectedProject.value = Object.keys(projects)[0] || null;
                         }
+                        closeModal();
                     }
                 };
 
