@@ -14,7 +14,6 @@
         })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
     <title>One Page Project</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -1041,7 +1040,8 @@
                         callback: handleGoogleResponse,
                         ux_mode: 'popup',
                         auto_select: false,
-                        cancel_on_tap_outside: true
+                        cancel_on_tap_outside: true,
+                        use_fedcm_for_prompt: false
                     });
                     await nextTick();
                     const btn = document.getElementById('google-signin-btn');
