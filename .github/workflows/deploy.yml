@@ -1,4 +1,4 @@
-name: Deploy to Tomcat
+name: Deploy to Tomcat(DEV)
 
 on:
   push:
