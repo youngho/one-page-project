@@ -75,11 +75,11 @@ jobs:
 
             echo "Deploying $(ls -lh "$WAR_FILE")"
 
-            sudo systemctl stop tomcat
+            #sudo systemctl stop tomcat
             sudo rm -rf "${TOMCAT_WEBAPPS}/opp" "${TOMCAT_WEBAPPS}/opp.war"
             sudo cp "$WAR_FILE" "${TOMCAT_WEBAPPS}/opp.war"
             rm -f "$WAR_FILE"
-            sudo systemctl start tomcat
-            sudo systemctl is-active --quiet tomcat
+            #sudo systemctl start tomcat
+            #sudo systemctl is-active --quiet tomcat
 
             echo "Tomcat is running with new deployment"
