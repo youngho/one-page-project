@@ -42,7 +42,7 @@ public class GoogleAuthCallbackController {
         }
     }
 
-    @GetMapping({"/auth/google/callback", "/", ""})
+    @GetMapping("/auth/google/callback")
     public String handleGet() {
         return "redirect:/";
     }
