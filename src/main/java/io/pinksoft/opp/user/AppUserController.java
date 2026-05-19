@@ -13,6 +13,7 @@ import java.util.Map;
 public class AppUserController {
 
     private final AppUserService service;
+    private final GoogleTokenVerifier googleTokenVerifier;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
@@ -37,11 +38,19 @@ public class AppUserController {
     @PostMapping("/google")
     public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> body) {
         try {
+            String credential = body.get("credential");
+            if (credential == null || credential.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Google 인증 정보가 없습니다."));
+            }
+
+            GoogleTokenVerifier.GoogleUserInfo googleUser = googleTokenVerifier.verify(credential);
             String username = service.loginOrCreateWithGoogle(
-                    body.get("googleId"), body.get("email"), body.get("name"));
+                    googleUser.googleId(), googleUser.email(), googleUser.name());
             return ResponseEntity.ok(Map.of("username", username));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Google 로그인에 실패했습니다."));
         }
     }
 }

@@ -15,7 +15,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/asciidoctor.js/1.5.9/css/asciidoctor.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        window.__oppGoogleReadyQueue = [];
+        window.__oppOnGoogleLibraryLoad = () => {
+            window.__oppGoogleReadyQueue.forEach((fn) => fn());
+            window.__oppGoogleReadyQueue = [];
+        };
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer onload="window.__oppOnGoogleLibraryLoad?.()"></script>
     <style>
         @keyframes fadeIn {
             from {
@@ -970,47 +977,92 @@
 
                 const handleGoogleResponse = async (response) => {
                     authError.value = '';
+                    if (!response?.credential) {
+                        authError.value = 'Google 인증 정보를 받지 못했습니다.';
+                        return;
+                    }
                     try {
-                        const parts = response.credential.split('.');
-                        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
                         const res = await fetch(`${SERVER_BASE}/api/users/google`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ googleId: payload.sub, email: payload.email, name: payload.name })
+                            body: JSON.stringify({ credential: response.credential })
                         });
-                        if (!res.ok) { authError.value = (await res.json()).message || 'Google 로그인에 실패했습니다.'; return; }
-                        const data = await res.json();
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            authError.value = data.message || 'Google 로그인에 실패했습니다.';
+                            return;
+                        }
                         localStorage.setItem('opp_user', data.username);
                         await applyLogin(data.username);
-                    } catch { authError.value = 'Google 로그인 중 오류가 발생했습니다.'; }
+                    } catch {
+                        authError.value = 'Google 로그인 중 오류가 발생했습니다.';
+                    }
                 };
+
+                const waitForGoogleLibrary = () => new Promise((resolve, reject) => {
+                    if (window.google?.accounts?.id) {
+                        resolve();
+                        return;
+                    }
+                    const onReady = () => {
+                        if (window.google?.accounts?.id) resolve();
+                    };
+                    window.__oppGoogleReadyQueue.push(onReady);
+                    const timer = setInterval(() => {
+                        if (window.google?.accounts?.id) {
+                            clearInterval(timer);
+                            resolve();
+                        }
+                    }, 100);
+                    setTimeout(() => {
+                        clearInterval(timer);
+                        if (!window.google?.accounts?.id) {
+                            reject(new Error('Google 로그인 스크립트를 불러오지 못했습니다.'));
+                        }
+                    }, 10000);
+                });
+
+                const initGoogleSignIn = async () => {
+                    await waitForGoogleLibrary();
+                    google.accounts.id.initialize({
+                        client_id: googleClientId,
+                        callback: handleGoogleResponse,
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                        use_fedcm_for_prompt: true
+                    });
+                    await nextTick();
+                    const btn = document.getElementById('google-signin-btn');
+                    if (btn) {
+                        btn.innerHTML = '';
+                        google.accounts.id.renderButton(btn, {
+                            theme: 'outline',
+                            size: 'large',
+                            width: Math.min(316, btn.clientWidth || 316),
+                            text: 'signin_with',
+                            locale: 'ko'
+                        });
+                    }
+                };
+
+                watch(authTab, async (tab) => {
+                    if (tab !== 'login' || !googleClientId) return;
+                    try {
+                        await initGoogleSignIn();
+                    } catch {
+                        authError.value = 'Google 로그인 버튼을 불러오지 못했습니다. 네트워크 또는 광고 차단 설정을 확인하세요.';
+                    }
+                });
 
                 onMounted(async () => {
                     const savedUser = localStorage.getItem('opp_user');
                     if (savedUser) await applyLogin(savedUser);
 
-                    if (googleClientId) {
-                        const initGoogle = async () => {
-                            google.accounts.id.initialize({
-                                client_id: googleClientId,
-                                callback: handleGoogleResponse,
-                                auto_select: true,
-                                cancel_on_tap_outside: false
-                            });
-                            await nextTick();
-                            const btn = document.getElementById('google-signin-btn');
-                            if (btn) google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', width: 316, text: 'signin_with' });
-                            google.accounts.id.prompt((notification) => {
-                                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                                    // One Tap 미지원 환경 (미등록 도메인, FedCM 차단 등) — 버튼은 정상 작동
-                                }
-                            });
-                        };
-                        if (typeof google !== 'undefined') {
-                            initGoogle();
-                        } else {
-                            window.onGoogleLibraryLoad = initGoogle;
-                        }
+                    if (!googleClientId) return;
+                    try {
+                        await initGoogleSignIn();
+                    } catch {
+                        authError.value = 'Google 로그인 버튼을 불러오지 못했습니다. 네트워크 또는 광고 차단 설정을 확인하세요.';
                     }
                 });
 

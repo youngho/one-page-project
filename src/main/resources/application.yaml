@@ -48,3 +48,6 @@ logging:
 springdoc:
   swagger-ui:
     path: /docs
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:4835889241-lhjldl2cqmru4did8l3rascrtsua6a09.apps.googleusercontent.com}

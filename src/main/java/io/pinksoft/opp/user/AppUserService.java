@@ -39,7 +39,7 @@ public class AppUserService {
         return repository.findByGoogleId(googleId)
                 .map(AppUser::getUsername)
                 .orElseGet(() -> {
-                    String base = email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "_");
+                    String base = deriveUsernameBase(googleId, email);
                     String username = base;
                     int i = 1;
                     while (repository.existsByUsername(username)) username = base + i++;
@@ -51,5 +51,15 @@ public class AppUserService {
                     repository.save(user);
                     return username;
                 });
+    }
+
+    private static String deriveUsernameBase(String googleId, String email) {
+        if (email != null && email.contains("@")) {
+            String local = email.substring(0, email.indexOf('@'));
+            String sanitized = local.replaceAll("[^a-zA-Z0-9_]", "_");
+            if (!sanitized.isBlank()) return sanitized;
+        }
+        String suffix = googleId.length() > 8 ? googleId.substring(0, 8) : googleId;
+        return "user_" + suffix.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 }
