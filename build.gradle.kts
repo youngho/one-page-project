@@ -51,6 +51,7 @@ dependencies {
 // https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
     implementation("org.springframework.security:spring-security-crypto")
+    implementation("com.google.api-client:google-api-client:2.7.2")
 }
 
 flyway {

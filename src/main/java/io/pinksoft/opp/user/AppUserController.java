@@ -1,11 +1,15 @@
 package io.pinksoft.opp.user;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "*")
@@ -49,7 +53,11 @@ public class AppUserController {
             return ResponseEntity.ok(Map.of("username", username));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (GeneralSecurityException | IOException e) {
+            log.warn("Google token verification failed", e);
+            return ResponseEntity.badRequest().body(Map.of("message", "Google 토큰 검증에 실패했습니다."));
         } catch (Exception e) {
+            log.error("Google login failed", e);
             return ResponseEntity.badRequest().body(Map.of("message", "Google 로그인에 실패했습니다."));
         }
     }

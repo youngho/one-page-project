@@ -1025,9 +1025,13 @@
 
                 const initGoogleSignIn = async () => {
                     await waitForGoogleLibrary();
+                    // redirect: COOP postMessage 없이 동작 (Console에 /opp/ 리디렉션 URI 등록 필요)
+                    const loginUri = `${window.location.origin}/opp/`;
                     google.accounts.id.initialize({
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
+                        ux_mode: 'redirect',
+                        login_uri: loginUri,
                         auto_select: false,
                         cancel_on_tap_outside: true
                     });
