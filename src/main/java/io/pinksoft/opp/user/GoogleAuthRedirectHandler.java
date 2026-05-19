@@ -25,10 +25,10 @@ public class GoogleAuthRedirectHandler {
             return "/?login=" + URLEncoder.encode(username, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException | IllegalStateException e) {
             log.warn("Google redirect login failed: {}", e.getMessage());
-            return errorUrl(e.getMessage());
+            return errorUrl(e.getMessage() != null ? e.getMessage() : "Google 로그인에 실패했습니다.");
         } catch (GeneralSecurityException | IOException e) {
             log.warn("Google redirect token verification failed", e);
-            return errorUrl("Google 토큰 검증에 실패했습니다.");
+            return errorUrl("Google 토큰 검증에 실패했습니다. 서버에서 Google API 접속을 확인하세요.");
         } catch (Exception e) {
             log.error("Google redirect login failed", e);
             return errorUrl("Google 로그인에 실패했습니다.");
