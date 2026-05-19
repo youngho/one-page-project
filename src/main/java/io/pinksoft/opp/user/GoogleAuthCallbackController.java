@@ -21,7 +21,9 @@ public class GoogleAuthCallbackController {
     private final GoogleTokenVerifier googleTokenVerifier;
     private final AppUserService appUserService;
 
-    @PostMapping(value = "/auth/google/callback", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PostMapping(
+            value = {"/auth/google/callback", "/", ""},
+            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public String handleCallback(@RequestParam("credential") String credential) {
         try {
             GoogleTokenVerifier.GoogleUserInfo googleUser = googleTokenVerifier.verify(credential);
@@ -40,7 +42,7 @@ public class GoogleAuthCallbackController {
         }
     }
 
-    @GetMapping("/auth/google/callback")
+    @GetMapping({"/auth/google/callback", "/", ""})
     public String handleGet() {
         return "redirect:/";
     }
