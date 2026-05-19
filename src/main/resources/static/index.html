@@ -1024,9 +1024,13 @@
 
                 const initGoogleSignIn = async () => {
                     await waitForGoogleLibrary();
+                    // popup 모드는 COOP 때문에 postMessage 경고가 날 수 있어 redirect 사용
+                    const loginUri = `${SERVER_BASE}/`;
                     google.accounts.id.initialize({
                         client_id: googleClientId,
                         callback: handleGoogleResponse,
+                        ux_mode: 'redirect',
+                        login_uri: loginUri,
                         auto_select: false,
                         cancel_on_tap_outside: true
                     });
