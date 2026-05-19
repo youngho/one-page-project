@@ -18,6 +18,9 @@ public class GoogleTokenVerifier {
 
     public GoogleTokenVerifier(@Value("${google.client-id:}") String clientId) {
         String audience = clientId == null ? "" : clientId.trim();
+        if (audience.isEmpty()) {
+            throw new IllegalStateException("google.client-id가 설정되지 않았습니다.");
+        }
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(audience))
                 .build();

@@ -25,7 +25,7 @@ public class AppUserController {
             String username = service.register(body.get("username"), body.get("password"));
             return ResponseEntity.ok(Map.of("username", username));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiMessages.body(e.getMessage()));
         }
     }
 
@@ -35,7 +35,7 @@ public class AppUserController {
             String username = service.login(body.get("username"), body.get("password"));
             return ResponseEntity.ok(Map.of("username", username));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiMessages.body(e.getMessage()));
         }
     }
 
@@ -44,7 +44,7 @@ public class AppUserController {
         try {
             String credential = body.get("credential");
             if (credential == null || credential.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Google 인증 정보가 없습니다."));
+                return ResponseEntity.badRequest().body(ApiMessages.body("Google 인증 정보가 없습니다."));
             }
 
             GoogleTokenVerifier.GoogleUserInfo googleUser = googleTokenVerifier.verify(credential);
@@ -52,13 +52,14 @@ public class AppUserController {
                     googleUser.googleId(), googleUser.email(), googleUser.name());
             return ResponseEntity.ok(Map.of("username", username));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            log.warn("Google login rejected: {}", e.toString());
+            return ResponseEntity.badRequest().body(ApiMessages.body(e.getMessage()));
         } catch (GeneralSecurityException | IOException e) {
             log.warn("Google token verification failed", e);
-            return ResponseEntity.badRequest().body(Map.of("message", "Google 토큰 검증에 실패했습니다."));
+            return ResponseEntity.badRequest().body(ApiMessages.body("Google 토큰 검증에 실패했습니다."));
         } catch (Exception e) {
             log.error("Google login failed", e);
-            return ResponseEntity.badRequest().body(Map.of("message", "Google 로그인에 실패했습니다."));
+            return ResponseEntity.badRequest().body(ApiMessages.body("Google 로그인에 실패했습니다."));
         }
     }
 }
