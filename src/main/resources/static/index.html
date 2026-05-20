@@ -226,8 +226,8 @@
         <!-- Project View -->
         <div class="w-screen h-screen overflow-hidden">
             <project-item v-if="selectedProject && projects[selectedProject]" :key="selectedProject"
-                :project="projects[selectedProject]" :project-id="selectedProject" @edit="projectEditModal"
-                @delete="deleteProject" @update="updateProject" />
+                :project="projects[selectedProject]" :project-id="selectedProject" :current-user="currentUser"
+                @edit="projectEditModal" @delete="deleteProject" @update="updateProject" />
         </div>
 
         <!-- Modal -->
@@ -332,9 +332,324 @@
             </head><body><div id="content">${content}</div></body></html>`;
         };
 
+        const IssuePanel = {
+            props: { projectId: String, currentUser: String },
+            setup(props) {
+                const ISSUE_API = `${SERVER_BASE}/api/issues`;
+                const issues = ref([]);
+                const users = ref([]);
+                const statusFilter = ref('ALL');
+                const selectedIssue = ref(null);
+                const comments = ref([]);
+                const isCreating = ref(false);
+                const isEditing = ref(false);
+                const commentInput = ref('');
+                const isLoading = ref(false);
+                const form = reactive({ title: '', description: '', status: 'OPEN', priority: 'NORMAL', assignee: '' });
+
+                const filteredIssues = computed(() =>
+                    statusFilter.value === 'ALL' ? issues.value : issues.value.filter(i => i.status === statusFilter.value)
+                );
+                const statusCounts = computed(() => ({
+                    ALL: issues.value.length,
+                    OPEN: issues.value.filter(i => i.status === 'OPEN').length,
+                    IN_PROGRESS: issues.value.filter(i => i.status === 'IN_PROGRESS').length,
+                    CLOSED: issues.value.filter(i => i.status === 'CLOSED').length,
+                }));
+
+                const renderAdoc = (text) =>
+                    text ? asciidoctor.convert(text, { safe: 'safe', attributes: { showtitle: false } }) : '';
+
+                const formatDate = (dt) => {
+                    if (!dt) return '';
+                    return new Date(dt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                };
+
+                const statusLabel = (s) => ({ OPEN: '열림', IN_PROGRESS: '진행중', CLOSED: '닫힘' })[s] || s;
+                const priorityLabel = (p) => ({ LOW: '낮음', NORMAL: '보통', HIGH: '높음', URGENT: '긴급' })[p] || p;
+                const statusClass = (s) => ({ OPEN: 'bg-blue-100 text-blue-700', IN_PROGRESS: 'bg-amber-100 text-amber-700', CLOSED: 'bg-stone-100 text-stone-500' })[s] || 'bg-stone-100 text-stone-500';
+                const priorityClass = (p) => ({
+                    LOW: 'bg-sky-50 text-sky-500 border border-sky-200',
+                    NORMAL: 'bg-blue-50 text-blue-600 border border-blue-200',
+                    HIGH: 'bg-orange-50 text-orange-600 border border-orange-200',
+                    URGENT: 'bg-red-50 text-red-600 border border-red-200'
+                })[p] || '';
+
+                const loadIssues = async () => {
+                    isLoading.value = true;
+                    try {
+                        const res = await fetch(`${ISSUE_API}/${props.projectId}`);
+                        if (res.ok) issues.value = await res.json();
+                    } finally { isLoading.value = false; }
+                };
+                const loadUsers = async () => {
+                    try {
+                        const res = await fetch(`${SERVER_BASE}/api/users/list`);
+                        if (res.ok) users.value = await res.json();
+                    } catch {}
+                };
+                const openCreate = () => {
+                    Object.assign(form, { title: '', description: '', status: 'OPEN', priority: 'NORMAL', assignee: '' });
+                    selectedIssue.value = null; comments.value = [];
+                    isCreating.value = true; isEditing.value = false;
+                };
+                const openEdit = () => {
+                    Object.assign(form, {
+                        title: selectedIssue.value.title,
+                        description: selectedIssue.value.description || '',
+                        status: selectedIssue.value.status,
+                        priority: selectedIssue.value.priority,
+                        assignee: selectedIssue.value.assignee || ''
+                    });
+                    isEditing.value = true;
+                };
+                const cancelForm = () => { isCreating.value = false; isEditing.value = false; };
+                const submitForm = async () => {
+                    if (!form.title.trim()) return;
+                    try {
+                        if (isCreating.value) {
+                            const res = await fetch(`${ISSUE_API}/${props.projectId}`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ ...form, createdBy: props.currentUser })
+                            });
+                            if (res.ok) {
+                                const n = await res.json();
+                                issues.value.unshift(n);
+                                isCreating.value = false;
+                                await selectIssue(n);
+                            }
+                        } else if (isEditing.value) {
+                            const res = await fetch(`${ISSUE_API}/${props.projectId}/${selectedIssue.value.id}`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(form)
+                            });
+                            if (res.ok) {
+                                const updated = await res.json();
+                                const idx = issues.value.findIndex(i => i.id === updated.id);
+                                if (idx >= 0) issues.value[idx] = updated;
+                                selectedIssue.value = updated; isEditing.value = false;
+                            }
+                        }
+                    } catch (e) { console.error('이슈 저장 실패:', e); }
+                };
+                const selectIssue = async (issue) => {
+                    selectedIssue.value = issue; isCreating.value = false; isEditing.value = false;
+                    try {
+                        const res = await fetch(`${ISSUE_API}/${props.projectId}/${issue.id}/comments`);
+                        if (res.ok) comments.value = await res.json();
+                    } catch {}
+                };
+                const deleteIssue = async (id) => {
+                    if (!confirm('이슈를 삭제하시겠습니까?')) return;
+                    const res = await fetch(`${ISSUE_API}/${props.projectId}/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        issues.value = issues.value.filter(i => i.id !== id);
+                        if (selectedIssue.value?.id === id) { selectedIssue.value = null; isEditing.value = false; }
+                    }
+                };
+                const addComment = async () => {
+                    if (!commentInput.value.trim() || !selectedIssue.value) return;
+                    try {
+                        const res = await fetch(`${ISSUE_API}/${props.projectId}/${selectedIssue.value.id}/comments`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: props.currentUser, content: commentInput.value })
+                        });
+                        if (res.ok) { comments.value.push(await res.json()); commentInput.value = ''; }
+                    } catch (e) { console.error('댓글 추가 실패:', e); }
+                };
+                const deleteComment = async (commentId) => {
+                    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+                    const res = await fetch(`${ISSUE_API}/${props.projectId}/${selectedIssue.value.id}/comments/${commentId}`, { method: 'DELETE' });
+                    if (res.ok) comments.value = comments.value.filter(c => c.id !== commentId);
+                };
+
+                onMounted(() => { loadIssues(); loadUsers(); });
+                watch(() => props.projectId, () => {
+                    issues.value = []; selectedIssue.value = null; comments.value = [];
+                    isCreating.value = false; isEditing.value = false;
+                    loadIssues();
+                });
+
+                return {
+                    issues, users, statusFilter, selectedIssue, comments,
+                    isCreating, isEditing, commentInput, isLoading, form,
+                    filteredIssues, statusCounts,
+                    openCreate, openEdit, cancelForm, submitForm,
+                    selectIssue, deleteIssue, addComment, deleteComment,
+                    renderAdoc, formatDate, statusLabel, priorityLabel, statusClass, priorityClass
+                };
+            },
+            template: `
+                <div class="flex flex-col h-full min-h-0">
+                    <!-- 필터 헤더 -->
+                    <div class="px-6 pt-3 pb-3 flex-none flex items-center justify-between gap-4 border-b border-stone-200">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span v-for="tab in [{v:'ALL',l:'전체'},{v:'OPEN',l:'열림'},{v:'IN_PROGRESS',l:'진행중'},{v:'CLOSED',l:'닫힘'}]" :key="tab.v"
+                                @click="statusFilter = tab.v"
+                                :class="['cursor-pointer px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none',
+                                         statusFilter === tab.v ? 'bg-indigo-100 text-indigo-700' : 'bg-stone-100 text-stone-500 hover:bg-stone-200']">
+                                {{ tab.l }} <span class="opacity-60">({{ statusCounts[tab.v] }})</span>
+                            </span>
+                        </div>
+                        <button @click="openCreate"
+                            class="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-xs font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm whitespace-nowrap flex-none">
+                            + 새 이슈
+                        </button>
+                    </div>
+
+                    <!-- 본문 -->
+                    <div class="flex-1 overflow-hidden flex min-h-0 px-6 py-4 gap-4">
+
+                        <!-- 이슈 목록 -->
+                        <div class="w-64 flex-none overflow-y-auto space-y-2 pr-1">
+                            <div v-if="isLoading" class="text-sm text-stone-400 text-center py-8">로딩 중…</div>
+                            <div v-else-if="filteredIssues.length === 0" class="text-sm text-stone-400 text-center py-8">이슈가 없습니다.</div>
+                            <div v-for="issue in filteredIssues" :key="issue.id"
+                                @click="selectIssue(issue)"
+                                :class="['cursor-pointer rounded-xl px-4 py-3 transition-all shadow-sm border',
+                                         selectedIssue && selectedIssue.id === issue.id
+                                             ? 'bg-indigo-50 border-indigo-200'
+                                             : 'bg-white border-transparent hover:shadow-md hover:border-stone-200']">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <span class="text-sm font-medium text-stone-800 leading-snug flex-1 min-w-0 break-words">{{ issue.title }}</span>
+                                    <span :class="['text-xs px-1.5 py-0.5 rounded font-medium flex-none', priorityClass(issue.priority)]">{{ priorityLabel(issue.priority) }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span :class="['text-xs px-2 py-0.5 rounded-full font-medium', statusClass(issue.status)]">{{ statusLabel(issue.status) }}</span>
+                                    <span v-if="issue.assignee" class="text-xs text-stone-400">→ {{ issue.assignee }}</span>
+                                    <span class="text-xs text-stone-300 ml-auto">#{{ issue.id }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 우측 패널 -->
+                        <div class="flex-1 overflow-y-auto min-w-0">
+
+                            <!-- 생성/편집 폼 -->
+                            <div v-if="isCreating || isEditing" class="bg-white rounded-xl p-6 shadow-sm">
+                                <h4 class="text-base font-bold text-stone-800 mb-5">{{ isCreating ? '새 이슈' : '이슈 편집' }}</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-stone-600 mb-1.5">제목</label>
+                                        <input type="text" v-model="form.title"
+                                            class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
+                                            placeholder="이슈 제목">
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-semibold text-stone-600 mb-1.5">상태</label>
+                                            <select v-model="form.status" class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+                                                <option value="OPEN">열림</option>
+                                                <option value="IN_PROGRESS">진행중</option>
+                                                <option value="CLOSED">닫힘</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-semibold text-stone-600 mb-1.5">우선순위</label>
+                                            <select v-model="form.priority" class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+                                                <option value="LOW">낮음</option>
+                                                <option value="NORMAL">보통</option>
+                                                <option value="HIGH">높음</option>
+                                                <option value="URGENT">긴급</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-semibold text-stone-600 mb-1.5">담당자</label>
+                                            <select v-model="form.assignee" class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+                                                <option value="">없음</option>
+                                                <option v-for="u in users" :key="u" :value="u">{{ u }}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-stone-600 mb-1.5">설명 <span class="font-normal text-stone-400">(AsciiDoc)</span></label>
+                                        <textarea v-model="form.description" rows="10"
+                                            class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all leading-relaxed"
+                                            placeholder="AsciiDoc으로 설명을 작성하세요"></textarea>
+                                    </div>
+                                    <div class="flex gap-2 pt-1">
+                                        <button @click="submitForm"
+                                            class="px-5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm">저장</button>
+                                        <button @click="cancelForm"
+                                            class="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm font-semibold hover:bg-stone-200 transition-all">취소</button>
+                                        <button v-if="isEditing" @click="deleteIssue(selectedIssue.id)"
+                                            class="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition-all ml-auto">삭제</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 이슈 상세 -->
+                            <div v-else-if="selectedIssue" class="space-y-4">
+                                <div class="bg-white rounded-xl p-6 shadow-sm">
+                                    <div class="flex items-start justify-between gap-4 mb-4">
+                                        <div class="min-w-0">
+                                            <h4 class="text-lg font-bold text-stone-800 leading-snug">{{ selectedIssue.title }}</h4>
+                                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                                <span :class="['text-xs px-2 py-0.5 rounded-full font-medium', statusClass(selectedIssue.status)]">{{ statusLabel(selectedIssue.status) }}</span>
+                                                <span :class="['text-xs px-1.5 py-0.5 rounded font-medium', priorityClass(selectedIssue.priority)]">{{ priorityLabel(selectedIssue.priority) }}</span>
+                                                <span v-if="selectedIssue.assignee" class="text-xs text-stone-500">담당: <span class="font-semibold">{{ selectedIssue.assignee }}</span></span>
+                                                <span class="text-xs text-stone-400">작성: {{ selectedIssue.createdBy }}</span>
+                                                <span class="text-xs text-stone-300">{{ formatDate(selectedIssue.createdAt) }}</span>
+                                            </div>
+                                        </div>
+                                        <button @click="openEdit"
+                                            class="px-3 py-1.5 bg-stone-100 text-stone-600 rounded-lg text-xs font-semibold hover:bg-stone-200 transition-all flex-none">편집</button>
+                                    </div>
+                                    <div v-if="selectedIssue.description"
+                                         v-html="renderAdoc(selectedIssue.description)"
+                                         class="adoc mt-4 pt-4 border-t border-stone-100"></div>
+                                    <div v-else class="text-sm text-stone-400 italic mt-4 pt-4 border-t border-stone-100">설명이 없습니다.</div>
+                                </div>
+
+                                <!-- 댓글 -->
+                                <div class="bg-white rounded-xl p-6 shadow-sm">
+                                    <h5 class="text-sm font-bold text-stone-700 mb-4">댓글 <span class="font-normal text-stone-400">({{ comments.length }})</span></h5>
+                                    <div v-for="comment in comments" :key="comment.id"
+                                         class="mb-4 pb-4 border-b border-stone-100 last:border-0 last:mb-0 last:pb-0">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-xs font-semibold text-stone-700">{{ comment.username }}</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs text-stone-400">{{ formatDate(comment.createdAt) }}</span>
+                                                <button v-if="comment.username === currentUser"
+                                                    @click="deleteComment(comment.id)"
+                                                    class="text-xs text-stone-300 hover:text-red-500 transition-colors">삭제</button>
+                                            </div>
+                                        </div>
+                                        <div v-html="renderAdoc(comment.content)" class="adoc text-sm"></div>
+                                    </div>
+                                    <div v-if="comments.length === 0" class="text-sm text-stone-400 mb-4">아직 댓글이 없습니다.</div>
+                                    <div class="mt-4 pt-4 border-t border-stone-100 space-y-2">
+                                        <textarea v-model="commentInput" rows="3"
+                                            class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
+                                            placeholder="댓글을 입력하세요 (AsciiDoc 지원)"></textarea>
+                                        <button @click="addComment" :disabled="!commentInput.trim()"
+                                            :class="['px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+                                                     commentInput.trim()
+                                                         ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-sm'
+                                                         : 'bg-stone-100 text-stone-400 cursor-not-allowed']">
+                                            댓글 추가
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 빈 상태 -->
+                            <div v-else class="flex items-center justify-center h-full">
+                                <div class="text-center text-stone-400">
+                                    <div class="text-4xl mb-3 opacity-30">☑</div>
+                                    <div class="text-sm">이슈를 선택하거나 새 이슈를 만드세요.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
         const ProjectItem = {
-            props: { project: Object, projectId: String },
+            props: { project: Object, projectId: String, currentUser: String },
             emits: ['edit', 'delete', 'update'],
+            components: { 'issue-panel': IssuePanel },
             setup(props, { emit }) {
                 const isEditingContent = ref(false);
                 const editingContent = ref('');
@@ -541,6 +856,8 @@
                     }
                 };
 
+                const currentTab = ref('content');
+
                 return {
                     isEditingContent, editingContent, tocVisible,
                     selectedSectionId, selectedSubSectionId,
@@ -551,7 +868,8 @@
                     isCommitting, commitError, commitSuccess,
                     selectSection, selectSubSection, navigateTo,
                     startEditing, saveContent, cancelEditing, handleKeydown,
-                    openGithubModal, commitToGithub
+                    openGithubModal, commitToGithub,
+                    currentTab
                 };
             },
             template: `
@@ -567,12 +885,26 @@
                             <div class="h-1 w-16 bg-gradient-to-r from-stone-400 to-stone-500 rounded-full mt-2"></div>
                         </div>
                         <div class="flex gap-2 flex-none items-center pt-1">
-                            <button v-if="!isEditingContent && tocItems.length > 0" @click="tocVisible = !tocVisible"
+                            <!-- 탭 버튼 -->
+                            <template v-if="!isEditingContent">
+                                <button @click="currentTab = 'content'"
+                                    :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                                             currentTab === 'content' ? 'bg-stone-200 text-stone-700' : 'bg-stone-100 text-stone-400 hover:bg-stone-200']">
+                                    📄 문서
+                                </button>
+                                <button @click="currentTab = 'issues'"
+                                    :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                                             currentTab === 'issues' ? 'bg-indigo-100 text-indigo-700' : 'bg-stone-100 text-stone-400 hover:bg-stone-200']">
+                                    이슈
+                                </button>
+                                <div class="w-px h-4 bg-stone-200 self-center"></div>
+                            </template>
+                            <button v-if="!isEditingContent && currentTab === 'content' && tocItems.length > 0" @click="tocVisible = !tocVisible"
                                 :class="['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
                                          tocVisible ? 'bg-indigo-100 text-indigo-600' : 'bg-stone-100 text-stone-500 hover:bg-stone-200']">
                                 ☰ 목차
                             </button>
-                            <template v-if="!isEditingContent">
+                            <template v-if="!isEditingContent && currentTab === 'content'">
                                 <button @click="startEditing"
                                     class="px-3 py-1.5 bg-gradient-to-r from-stone-500 to-stone-600 text-white rounded-lg text-xs font-semibold hover:from-stone-600 hover:to-stone-700 hover:-translate-y-0.5 hover:shadow-lg transition-all">
                                     ✏️ 편집
@@ -582,7 +914,7 @@
                                     ⚙️ 설정
                                 </button>
                             </template>
-                            <template v-else>
+                            <template v-else-if="isEditingContent">
                                 <span class="text-xs text-stone-400 hidden sm:inline">Ctrl+Enter 저장 · ESC 취소</span>
                                 <button v-if="isGithubUrl" @click="openGithubModal"
                                     class="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg text-xs font-semibold hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg transition-all">
@@ -601,7 +933,13 @@
                     </div>
 
                     <!-- 콘텐츠 영역 -->
-                    <div class="flex-1 overflow-hidden flex min-h-0 px-8 py-4 gap-4">
+                    <div :class="['flex-1 overflow-hidden flex min-h-0', currentTab === 'content' ? 'px-8 py-4 gap-4' : '']">
+
+                        <!-- 이슈 탭 -->
+                        <issue-panel v-if="currentTab === 'issues'" :project-id="projectId" :current-user="currentUser" class="flex-1 min-w-0"></issue-panel>
+
+                        <!-- 문서 탭 -->
+                        <template v-else>
 
                         <!-- 보기 모드: 드릴다운 뷰 -->
                         <template v-if="!isEditingContent">
@@ -716,6 +1054,8 @@
                                 </div>
                             </div>
                         </template>
+
+                        </template><!-- /문서 탭 -->
 
                     </div>
 

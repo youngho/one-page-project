@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -18,6 +19,11 @@ public class AppUserController {
 
     private final AppUserService service;
     private final GoogleTokenVerifier googleTokenVerifier;
+
+    @GetMapping("/list")
+    public ResponseEntity<List<String>> listUsers() {
+        return ResponseEntity.ok(service.listUsernames());
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
