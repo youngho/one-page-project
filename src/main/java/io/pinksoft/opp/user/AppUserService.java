@@ -6,6 +6,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class AppUserService {
@@ -51,6 +53,10 @@ public class AppUserService {
                     repository.save(user);
                     return username;
                 });
+    }
+
+    public List<String> listUsernames() {
+        return repository.findAllUsernames();
     }
 
     private static String deriveUsernameBase(String googleId, String email) {
